@@ -320,6 +320,7 @@
             transition: all 0.2s;
         }
         
+        /* Taslak Bildirimi Tasarımı */
         .draft-notice {
             background: linear-gradient(135deg, #f59e0b, #d97706);
             color: white;
@@ -420,6 +421,82 @@
         </div>
     </div>
 
+    <!-- New Project Modal -->
+    <div id="newProjectModal" class="fixed inset-0 z-[11000] hidden items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+        <div class="bg-white rounded-[32px] p-6 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl text-center space-y-6 animate-in zoom-in duration-300 mx-4">
+            <div class="w-14 h-14 bg-blue-50 rounded-full mx-auto flex items-center justify-center text-[#000080]">
+                <i data-lucide="folder-plus" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-lg font-black text-slate-900 uppercase tracking-tight">Create New Project</h3>
+            
+            <div id="newProjectLogoBox" class="modal-logo-box group">
+                <img id="newProjectLogoPreview" class="hidden">
+                <div id="newProjectLogoPlaceholder" class="text-slate-300 flex flex-col items-center gap-1">
+                    <i data-lucide="image" class="w-5 h-5"></i>
+                    <span class="text-[8px] font-black uppercase">Select Logo</span>
+                </div>
+                <input type="file" id="newProjectLogoInput" class="hidden" accept="image/*">
+            </div>
+
+            <div class="space-y-3 text-left">
+                <div class="space-y-1">
+                    <label class="login-label">PROJECT NAME</label>
+                    <input type="text" id="newProjectNameInput" class="login-input" placeholder="PROJECT NAME">
+                </div>
+                <div class="space-y-1">
+                    <label class="login-label">USERNAME</label>
+                    <input type="text" id="newProjectUserInput" class="login-input" placeholder="USERNAME">
+                </div>
+                <div class="space-y-1">
+                    <label class="login-label">PASSWORD</label>
+                    <input type="password" id="newProjectPassInput" class="login-input" placeholder="••••••••">
+                </div>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button id="saveNewProjectBtn" class="flex-grow py-4 bg-[#000080] text-white rounded-2xl font-black shadow-lg hover:bg-blue-900 transition-all uppercase text-xs">Save</button>
+                <button onclick="get('newProjectModal').classList.add('hidden'); get('newProjectModal').classList.remove('flex');" class="flex-grow py-4 bg-slate-100 text-slate-400 rounded-2xl font-black hover:bg-slate-200 transition-all uppercase text-xs">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Project Auth Modal -->
+    <div id="editProjectAuthModal" class="fixed inset-0 z-[11000] hidden items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+        <div class="bg-white rounded-[32px] p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl text-center space-y-6 animate-in zoom-in duration-300 mx-4">
+            <div class="w-14 h-14 bg-amber-50 rounded-full mx-auto flex items-center justify-center text-amber-600">
+                <i data-lucide="key-round" class="w-7 h-7"></i>
+            </div>
+            <h3 id="editProjectAuthTitle" class="text-lg font-black text-slate-900 uppercase tracking-tight">PROJECT INFORMATION</h3>
+
+            <div id="editProjectLogoBox" class="modal-logo-box group">
+                <img id="editProjectLogoPreview" class="hidden">
+                <div id="editProjectLogoPlaceholder" class="text-slate-300 flex flex-col items-center gap-1">
+                    <i data-lucide="image" class="w-5 h-5"></i>
+                    <span class="text-[8px] font-black uppercase">Select Logo</span>
+                </div>
+                <input type="file" id="editProjectLogoInput" class="hidden" accept="image/*">
+            </div>
+
+            <div class="space-y-4 text-left">
+                <div class="space-y-1">
+                    <label class="login-label">PROJECT NAME</label>
+                    <input type="text" id="editProjectNameInput" class="login-input" placeholder="PROJECT NAME">
+                </div>
+                <div class="space-y-1">
+                    <label class="login-label">USERNAME</label>
+                    <input type="text" id="editProjectUserInput" class="login-input" placeholder="USERNAME">
+                </div>
+                <div class="space-y-1">
+                    <label class="login-label">PASSWORD</label>
+                    <input type="text" id="editProjectPassInput" class="login-input" placeholder="PASSWORD">
+                </div>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button id="saveEditedProjectAuthBtn" class="flex-grow py-4 bg-amber-600 text-white rounded-2xl font-black shadow-lg hover:bg-amber-700 transition-all uppercase text-xs">UPDATE</button>
+                <button onclick="get('editProjectAuthModal').classList.add('hidden'); get('editProjectAuthModal').classList.remove('flex');" class="flex-grow py-4 bg-slate-100 text-slate-400 rounded-2xl font-black hover:bg-slate-200 transition-all uppercase text-xs">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Login Screen -->
     <div id="loginScreen">
         <div class="login-card animate-in fade-in zoom-in duration-500">
@@ -497,7 +574,9 @@
                     <button onclick="logout()" class="p-2.5 text-red-400 hover:bg-red-50 rounded-xl hide-on-collapse transition-colors"><i data-lucide="power" class="w-5 h-5"></i></button>
                 </div>
                 
+                <!-- TASLAK BÖLÜMÜ -->
                 <div id="draftContainer" class="hide-on-collapse"></div>
+
                 <button id="addNewProjectBtn" class="hidden w-full py-4 bg-[#000080] text-white rounded-2xl text-[11px] font-black flex items-center justify-center gap-2 hide-on-collapse shadow-lg hover:shadow-blue-500/20 hover:-translate-y-0.5 transition-all uppercase tracking-widest"><i data-lucide="plus" class="w-4 h-4"></i> NEW PROJECT</button>
             </div>
             <div id="archiveSidebarList" class="flex-grow overflow-y-auto p-4 space-y-2 custom-scrollbar"></div>
@@ -1055,6 +1134,7 @@
             } catch (err) { showMessage("Error", "Print failed."); } finally { toggleLoading(false); get('hiddenQrContainer').innerHTML = ''; }
         }
 
+        /* TASLAK FONKSİYONLARI */
         function saveCurrentToDraft() {
             if (currentSopPath === null && (points.length > 0 || get('sopTitleInput').value.trim() !== '')) {
                 newSopDraft = {
@@ -1082,6 +1162,7 @@
             get('sopSubtitleInput').value = projName;
             if(projLogo) { get('logoPreview').src = projLogo; get('logoPreview').classList.remove('hidden'); get('logoPlaceholder').classList.add('hidden'); }
             else if(newSopDraft.logo) { get('logoPreview').src = newSopDraft.logo; get('logoPreview').classList.remove('hidden'); get('logoPlaceholder').classList.add('hidden'); }
+            
             toggleLoading(true, "Loading draft...");
             (async () => {
                 const sImages = newSopDraft.images || [null]; images = [];
@@ -1170,9 +1251,15 @@
         function openEditProjectAuth(projId) {
             currentlyEditingProject = projId; 
             const auth = dynamicAuth[projId.toUpperCase()] || { user: '', pass: '', logo: null, name: '' };
-            get('editProjectNameInput').value = auth.name || projId;
-            get('editProjectUserInput').value = auth.user;
-            get('editProjectPassInput').value = auth.pass;
+            const nameField = get('editProjectNameInput');
+            const userField = get('editProjectUserInput');
+            const passField = get('editProjectPassInput');
+            
+            if(!nameField || !userField || !passField) return;
+
+            nameField.value = auth.name || projId;
+            userField.value = auth.user;
+            passField.value = auth.pass;
             get('editProjectAuthTitle').innerText = `${projId} INFORMATION`;
             const p = get('editProjectLogoPreview');
             const h = get('editProjectLogoPlaceholder');
@@ -1226,12 +1313,14 @@
             const npl = get('newProjectLogoInput'); if(npl) npl.onchange = (e) => handleModalLogoChange(e, 'newProjectLogoPreview', 'newProjectLogoPlaceholder');
             safeSetClick('editProjectLogoBox', () => get('editProjectLogoInput').click());
             const epl = get('editProjectLogoInput'); if(epl) epl.onchange = (e) => handleModalLogoChange(e, 'editProjectLogoPreview', 'editProjectLogoPlaceholder');
+            
             safeSetClick('addNewProjectBtn', function() {
                 get('newProjectNameInput').value = ""; get('newProjectUserInput').value = ""; get('newProjectPassInput').value = "";
                 get('newProjectLogoPreview').src = ""; get('newProjectLogoPreview').classList.add('hidden');
                 get('newProjectLogoPlaceholder').classList.remove('hidden');
                 get('newProjectModal').classList.remove('hidden'); get('newProjectModal').classList.add('flex');
             });
+
             safeSetClick('saveNewProjectBtn', async function() {
                 const name = get('newProjectNameInput').value.trim().toUpperCase();
                 const user = get('newProjectUserInput').value.trim(); const pass = get('newProjectPassInput').value.trim();
@@ -1244,6 +1333,7 @@
                     toggleLoading(false); openEditorForNewSop(); fetchArchive();
                 } else { showMessage("Missing Info", "Please fill in all fields."); }
             });
+
             safeSetClick('saveEditedProjectAuthBtn', saveEditedProjectAuth);
             safeSetClick('backToGateway', function() { get('loginScreen').style.display = 'none'; get('modeSelectionScreen').style.display = 'flex'; });
             const loginForm = get('loginForm');
@@ -1560,10 +1650,14 @@
         function closeEditor() { 
             if (currentSopPath === null && (points.length > 0 || get('sopTitleInput').value.trim() !== '')) {
                 showConfirm("Not Saved", "Your work is not saved. Do you want to save it as a draft?", function() {
-                    saveCurrentToDraft(); if(get('sopEditor')) get('sopEditor').classList.add('hidden'); if(get('projectEmptyState')) get('projectEmptyState').classList.remove('hidden');
+                    saveCurrentToDraft(); 
+                    if(get('sopEditor')) get('sopEditor').classList.add('hidden'); 
+                    if(get('projectEmptyState')) get('projectEmptyState').classList.remove('hidden');
                 });
             } else {
-                if(get('sopEditor')) get('sopEditor').classList.add('hidden'); if(get('projectEmptyState')) get('projectEmptyState').classList.remove('hidden'); currentSopPath = null; 
+                if(get('sopEditor')) get('sopEditor').classList.add('hidden'); 
+                if(get('projectEmptyState')) get('projectEmptyState').classList.remove('hidden'); 
+                currentSopPath = null; 
             }
         }
         
@@ -1650,8 +1744,11 @@
                     lastEditedAt: timestampStr
                 }; 
                 await supabaseClient.storage.from(BUCKET_NAME).upload(targetPath, new Blob([JSON.stringify(state)], { type: 'application/json' }), { upsert: true, contentType: 'application/json' }); 
+                
+                // Kayıt başarılıysa taslağı temizle
                 newSopDraft = null; 
                 renderDraftNotice();
+
                 currentSopPath = targetPath; 
                 loadedSopIsEdited = finalIsEdited; 
                 const editInfo = get('lastEditInfo');
