@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eldor SOP - Project Based Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8fafc; 
+            margin: 0; 
+            color: #1e293b;
+        }
+
+        :root {
+            --eldor-navy: #000080;
+            --eldor-light: #f1f5f9;
+            --eldor-border: #e2e8f0;
+        }
+
+        .app-container { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+        
+        .sidebar { 
+            width: 320px; 
+            flex-shrink: 0; 
+            background: white; 
+            border-right: 1px solid var(--eldor-border); 
+            display: flex; 
+            flex-direction: column; 
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            overflow: hidden; 
+            z-index: 100; 
+        }
+        .sidebar.collapsed { width: 84px; }
+        .sidebar.collapsed .hide-on-collapse { display: none !important; }
+        .sidebar.collapsed .center-on-collapse { justify-content: center; width: 100%; }
+
+        .main-content { 
+            flex-grow: 1; 
+            overflow-y: auto; 
+            padding: 2.5rem; 
+            position: relative; 
+            background: #f8fafc;
+        }
+
+        .canvas-container { 
+            position: relative; 
+            display: inline-block; 
+            width: 100%; 
+            background: #eee; 
+            border-radius: 16px; 
+            overflow: hidden; 
+            border: 1px solid var(--eldor-border); 
+            cursor: crosshair; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        canvas { display: block; max-width: 100%; height: auto; }
+        
+        .marker { 
+            position: absolute; 
+            width: 32px; 
+            height: 32px; 
+            color: white; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 14px; 
+            font-weight: 800; 
+            transform: translate(-50%, -50%); 
+            border: 2px solid white; 
+            cursor: pointer; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.25); 
+            z-index: 10; 
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            pointer-events: auto; 
+        }
+        .marker:hover { transform: translate(-50%, -50%) scale(1.2); z-index: 100; }
+        
+        .marker-red { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+        .marker-blue { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .marker-green { background: linear-gradient(135deg, #22c55e, #15803d); }
+        .marker-orange { background: linear-gradient(135deg, #f97316, #c2410c); }
+        .marker-purple { background: linear-gradient(135deg, #a855f7, #7e22ce); }
+        
+        .marker-operator { 
+            position: absolute; 
+            background: var(--eldor-navy); 
+            color: white; 
+            padding: 6px 14px; 
+            border-radius: 8px; 
+            font-size: 10px; 
+            font-weight: 900; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            transform: translate(-50%, -50%); 
+            border: 2px solid white; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+            white-space: nowrap; 
+            z-index: 20; 
+            pointer-events: auto; 
+            cursor: pointer; 
+            text-transform: uppercase;
+        }
+
+        .tool-btn { 
+            transition: all 0.2s; 
+            border: 1px solid var(--eldor-border); 
+            background: white;
+        }
+        .tool-btn.active { 
+            background-color: var(--eldor-navy); 
+            color: white; 
+            border-color: var(--eldor-navy); 
+            transform: translateY(-2px); 
+            box-shadow: 0 4px 12px rgba(0,0,128,0.2); 
+        }
+        
+        .tab-btn {
+            position: relative;
+            transition: all 0.3s;
+            padding: 10px 14px;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -1px;
+        }
+        .tab-btn.active { 
+            color: var(--eldor-navy); 
+            font-weight: 800; 
+            border-bottom-color: var(--eldor-navy);
+        }
+
+        /* --- Login Screen Styling --- */
+        #loginScreen { 
+            background: linear-gradient(135deg, #000080 0%, #000044 100%); 
+            position: fixed; 
+            inset: 0; 
+            z-index: 8000; 
+            display: none; 
+            align-items: center; 
+            justify-content: center; 
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 500px;
+            padding: 3rem;
+            text-align: center;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .login-icon-box {
+            width: 64px;
+            height: 64px;
+            background-color: #f0f7ff;
+            border-radius: 12px;
+            margin: 0 auto 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000080;
+        }
+
+        .login-input-group {
+            text-align: left;
+            margin-bottom: 1.5rem;
+        }
+
+        .login-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 800;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+            margin-left: 0.2rem;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-weight: 600;
+            color: #475569;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .login-input:focus {
+            border-color: #000080;
+            background-color: #ffffff;
+            box-shadow: 0 0 0 4px rgba(0, 0, 128, 0.05);
+        }
+
+        .login-submit-btn {
+            width: 100%;
+            padding: 1.25rem;
+            background-color: #000080;
+            color: white;
+            border-radius: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 1rem;
+            transition: all 0.2s;
+        }
+
+        .login-submit-btn:hover {
+            background-color: #000066;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- End Login Screen Styling --- */
+
+        #modeSelectionScreen { 
+            background: linear-gradient(135deg, #000080 0%, #000044 100%); 
+            position: fixed; 
+            inset: 0; 
+            z-index: 8000; 
+            display: none; 
+            align-items: center; 
+            justify-content: center; 
+        }
+
+        #operatorView, #engineEngineerVeiw { 
+            position: fixed; 
+            inset: 0; 
+            background: #f1f5f9; 
+            z-index: 9000; 
+            overflow-y: auto; 
+            display: none; 
+        }
+
+        .step-card { 
+            transition: all 0.2s ease-in-out; 
+            border-left: 5px solid transparent; 
+        }
+        .step-card:hover { transform: translateX(4px); background: #fff !important; }
+
+        .project-group-header { 
+            padding: 12px 16px; 
+            background: #f8fafc; 
+            font-size: 11px; 
+            font-weight: 800; 
+            color: #475569; 
+            text-transform: uppercase; 
+            margin-top: 10px; 
+            border-radius: 12px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            cursor: pointer; 
+            border: 1px solid var(--eldor-border); 
+            transition: all 0.2s;
+        }
+        .project-group-header:hover { background: #f1f5f9; border-color: #cbd5e1; }
+        .project-group-header.active { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+
+        .loading-overlay { 
+            position: fixed; 
+            top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(255,255,255,0.9); 
+            display: none; flex-direction: column; align-items: center; justify-content: center; 
+            z-index: 9999; backdrop-blur: 4px;
+        }
+        .loading-overlay.active { display: flex; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .step-description-area {
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            resize: none;
+            overflow: hidden;
+            font-size: 13px;
+            font-weight: 700;
+            color: #334155;
+            line-height: 1.4;
+            padding: 2px 0;
+            min-height: 20px;
+        }
+
+        #hiddenQrContainer { position: fixed; left: -9999px; top: -9999px; }
+
+        .op-slider-btn {
+            background: white;
+            color: var(--eldor-navy);
+            border: 1px solid #e2e8f0;
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+        }
+        
+        .draft-notice {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 12px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(217, 119, 6, 0.2);
+            text-transform: uppercase;
+            transition: all 0.3s;
+            flex-grow: 1;
+        }
+        .draft-notice:hover { transform: scale(1.02); }
+        .draft-delete-btn {
+            background: #ef4444;
+            color: white;
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .draft-delete-btn:hover { background: #b91c1c; transform: scale(1.05); }
+
+        .modal-logo-box {
+            width: 80px;
+            height: 80px;
+            border: 2px dashed #e2e8f0;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+            background: #f8fafc;
+            margin: 0 auto;
+            transition: all 0.2s;
+        }
+        .modal-logo-box:hover { border-color: var(--eldor-navy); background: #f1f5f9; }
+        .modal-logo-box img { width: 100%; height: 100%; object-fit: contain; padding: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="hiddenQrContainer"></div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="fixed inset-0 z-[11000] hidden items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+        <div class="bg-white rounded-[32px] p-8 max-w-md w-full shadow-2xl text-center space-y-6 animate-in zoom-in duration-300">
+            <div id="confirmIcon" class="w-16 h-16 bg-red-50 rounded-full mx-auto flex items-center justify-center text-red-600">
+                <i data-lucide="trash-2" class="w-10 h-10"></i>
+            </div>
+            <div>
+                <h3 id="confirmTitle" class="text-2xl font-black text-slate-900 uppercase tracking-tighter">Are you sure?</h3>
+                <p id="confirmText" class="text-slate-500 text-sm mt-2 font-medium leading-relaxed"></p>
+            </div>
+            <div class="flex gap-3">
+                <button id="confirmYesBtn" class="flex-grow py-4 bg-red-600 text-white rounded-2xl font-black shadow-lg hover:bg-red-700 transition-all uppercase text-xs">Yes</button>
+                <button id="confirmNoBtn" class="flex-grow py-4 bg-slate-100 text-slate-400 rounded-2xl font-black hover:bg-slate-200 transition-all uppercase text-xs">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgotPassModal" class="fixed inset-0 z-[11000] hidden items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+        <div class="bg-white rounded-[32px] p-8 max-w-sm w-full shadow-2xl text-center space-y-6 animate-in zoom-in duration-300">
+            <div class="w-16 h-16 bg-blue-50 rounded-full mx-auto flex items-center justify-center text-[#000080]">
+                <i data-lucide="mail-warning" class="w-8 h-8"></i>
+            </div>
+            <div>
+                <h3 class="text-xl font-black text-slate-900 uppercase tracking-tight">Password Recovery</h3>
+                <p id="forgotPassStatus" class="text-slate-400 text-[10px] mt-1 font-bold uppercase text-center leading-relaxed">Enter your company email.</p>
+            </div>
+
+            <div id="forgotEmailStage" class="space-y-4">
+                <input type="email" id="forgotEmailInput" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-center" placeholder="EMAIL ADDRESS">
+                <button id="sendCodeBtn" onclick="handleSendResetCode()" class="w-full py-4 bg-[#000080] text-white rounded-2xl font-black shadow-lg hover:bg-blue-900 transition-all uppercase text-xs">SEND CODE</button>
+            </div>
+
+            <div id="forgotVerifyStage" class="hidden space-y-4 text-center">
+                <div class="flex justify-center">
+                    <input type="text" maxlength="6" id="verificationCodeInput" class="w-48 px-2 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-green-500 font-black text-2xl tracking-[0.5em] text-center" placeholder="000000">
+                </div>
+                <button onclick="handleVerifyCode()" class="w-full py-4 bg-green-600 text-white rounded-2xl font-black shadow-lg hover:bg-green-700 transition-all uppercase text-xs">VERIFY CODE</button>
+                <p class="text-[9px] text-slate-400 font-bold">Didn't get the code? <button onclick="handleSendResetCode()" class="text-blue-600 underline">Send Again</button></p>
+            </div>
+
+            <button onclick="closeForgotPassModal()" class="text-slate-400 text-[10px] font-black uppercase hover:text-slate-700">Close</button>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen">
+        <div class="login-card animate-in fade-in zoom-in duration-500">
+            <div class="login-icon-box">
+                <i data-lucide="shield-check" class="w-8 h-8"></i>
+            </div>
+            <h2 class="text-3xl font-black text-slate-900 uppercase tracking-tight mb-2">LOG IN</h2>
+            <p class="text-slate-400 text-sm font-medium mb-10">Enter your credentials to verify access.</p>
+            
+            <form id="loginForm">
+                <div class="login-input-group">
+                    <label class="login-label">USERNAME</label>
+                    <input type="text" id="usernameInput" class="login-input" placeholder="Username">
+                </div>
+                
+                <div class="login-input-group">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="login-label !mb-0">PASSWORD</label>
+                        <button type="button" onclick="openForgotPassModal()" class="text-[9px] font-extrabold text-blue-600 uppercase hover:underline">FORGOT PASSWORD?</button>
+                    </div>
+                    <input type="password" id="passwordInput" required class="login-input" placeholder="••••••••">
+                </div>
+
+                <div id="loginError" class="hidden text-red-600 text-[11px] font-black text-center bg-red-50 py-3 rounded-xl border border-red-100 mb-6">Incorrect credentials.</div>
+                
+                <button type="submit" class="login-submit-btn">ACCESS SYSTEM</button>
+                
+                <button type="button" id="backToGateway" class="hidden mt-6 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-700 transition-colors">Back to selection</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Mode Selection Screen -->
+    <div id="modeSelectionScreen">
+        <div class="bg-white w-full max-w-2xl rounded-[40px] p-6 sm:p-12 shadow-2xl space-y-6 sm:space-y-10 text-center animate-in fade-in zoom-in duration-300">
+            <div class="space-y-2">
+                <h2 class="text-2xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter">Access Mode</h2>
+                <p class="text-slate-400 text-xs sm:text-base font-medium">How would you like to view the document?</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3 sm:gap-8">
+                <button onclick="handleModeChoice('engineer')" class="group relative p-4 sm:p-10 bg-slate-50 border-2 border-transparent hover:border-[#000080] rounded-[24px] sm:rounded-[32px] transition-all text-left flex flex-col gap-3 sm:gap-6 shadow-sm">
+                    <div class="w-10 h-10 sm:w-16 sm:h-16 bg-blue-100 rounded-xl sm:rounded-2xl flex items-center justify-center text-[#000080] group-hover:scale-110 transition-transform">
+                        <i data-lucide="settings" class="w-5 h-5 sm:w-8 sm:h-8"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base sm:text-2xl font-black text-slate-800 uppercase tracking-tight">Engineer</h3>
+                        <p class="hidden sm:block text-xs text-slate-500 mt-2 leading-relaxed font-medium">Full technical view and editing permission.</p>
+                    </div>
+                    <div class="mt-auto flex items-center text-[#000080] font-bold text-[8px] sm:text-xs uppercase italic tracking-tighter">PASSWORD REQUIRED <i data-lucide="lock" class="w-2 h-2 sm:w-3 sm:h-3 ml-1 sm:ml-2"></i></div>
+                </button>
+                <button onclick="handleModeChoice('operator')" class="group relative p-4 sm:p-10 bg-slate-50 border-2 border-transparent hover:border-[#000080] rounded-[24px] sm:rounded-[32px] transition-all text-left flex flex-col gap-3 sm:gap-6 shadow-sm">
+                    <div class="w-10 h-10 sm:w-16 sm:h-16 bg-orange-100 rounded-xl sm:rounded-2xl flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
+                        <i data-lucide="user-check" class="w-5 h-5 sm:w-8 sm:h-8"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base sm:text-2xl font-black text-slate-800 uppercase tracking-tight">Operator</h3>
+                        <p class="hidden sm:block text-xs text-slate-500 mt-2 leading-relaxed font-medium">Step-by-step production-oriented view.</p>
+                    </div>
+                    <div class="mt-auto flex items-center text-[#000080] font-bold text-[8px] sm:text-xs uppercase">FREE ACCESS <i data-lucide="arrow-right" class="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2"></i></div>
+                </button>
+            </div>
+            <button onclick="logout()" class="text-slate-400 text-[10px] font-black uppercase hover:text-slate-700 tracking-widest pt-4">Return to Main Login</button>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div class="app-container hidden opacity-0 transition-opacity duration-700" id="mainApp">
+        <aside id="sidebar" class="sidebar shadow-2xl">
+            <div class="p-8 border-b flex flex-col gap-6 bg-slate-50/50">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4 center-on-collapse">
+                        <div id="sidebarToggle" class="w-10 h-10 bg-[#000080] rounded-xl flex items-center justify-center cursor-pointer shadow-lg hover:bg-blue-900 transition-colors"><i data-lucide="layout-grid" class="w-5 h-5 text-white"></i></div>
+                        <h2 class="font-black text-slate-800 hide-on-collapse uppercase text-sm tracking-tighter">SOP Archive</h2>
+                    </div>
+                    <button onclick="logout()" class="p-2.5 text-red-400 hover:bg-red-50 rounded-xl hide-on-collapse transition-colors"><i data-lucide="power" class="w-5 h-5"></i></button>
+                </div>
+                
+                <div id="draftContainer" class="hide-on-collapse"></div>
+                <button id="addNewProjectBtn" class="hidden w-full py-4 bg-[#000080] text-white rounded-2xl text-[11px] font-black flex items-center justify-center gap-2 hide-on-collapse shadow-lg hover:shadow-blue-500/20 hover:-translate-y-0.5 transition-all uppercase tracking-widest"><i data-lucide="plus" class="w-4 h-4"></i> NEW PROJECT</button>
+            </div>
+            <div id="archiveSidebarList" class="flex-grow overflow-y-auto p-4 space-y-2 custom-scrollbar"></div>
+        </aside>
+
+        <main class="main-content">
+            <div id="projectEmptyState" class="h-full flex flex-col items-center justify-center text-center space-y-8">
+                <div class="w-32 h-32 bg-blue-50 rounded-[40px] flex items-center justify-center rotate-6"><i data-lucide="folder-search" class="w-16 h-16 text-[#000080]"></i></div>
+                <div class="space-y-2">
+                    <h2 id="activeProjectTitle" class="text-4xl font-black text-slate-900 tracking-tighter uppercase">Document Selection</h2>
+                    <p class="text-slate-400 font-medium max-w-xs mx-auto">Select a project from the side menu to perform actions or add a new document.</p>
+                </div>
+                <button id="startNewSopBtn" class="hidden px-10 py-5 bg-[#000080] text-white rounded-2xl font-black shadow-2xl hover:scale-105 transition-all uppercase text-xs tracking-widest">ADD NEW INSTRUCTION</button>
+            </div>
+
+            <!-- EDITOR PANEL -->
+            <div id="sopEditor" class="hidden max-w-6xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                <div class="flex flex-col lg:flex-row items-center gap-8 bg-white p-8 rounded-[32px] shadow-sm border border-slate-200">
+                    <div id="logoUploadBox" class="w-24 h-24 shrink-0 border-2 border-dashed border-slate-200 rounded-[20px] flex items-center justify-center cursor-pointer bg-slate-50 relative hover:bg-slate-100 transition-colors group">
+                        <img id="logoPreview" class="hidden w-full h-full object-contain p-3">
+                        <div id="logoPlaceholder" class="text-slate-300 text-[10px] font-black uppercase text-center group-hover:text-slate-400 transition-colors leading-tight px-2">Upload Logo</div>
+                        <input type="file" id="logoInput" class="hidden" accept="image/*">
+                    </div>
+                    <div class="flex-grow flex flex-col gap-1 w-full">
+                        <input type="text" id="sopTitleInput" class="w-full border-b-2 border-slate-100 focus:border-[#000080] outline-none font-black text-3xl text-[#000080] bg-transparent" placeholder="INSTRUCTION TITLE">
+                        <div class="flex flex-col gap-0.5">
+                            <input type="text" id="sopSubtitleInput" readonly class="text-xs outline-none text-slate-400 font-black uppercase cursor-not-allowed tracking-widest">
+                            <div id="lastEditInfo" class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1"></div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="viewRevisionBtn" class="hidden px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all flex items-center gap-2">
+                            <i id="viewRevisionIcon" data-lucide="eye" class="w-4 h-4"></i> <span id="viewRevisionLabel">VIEW REVISION</span>
+                        </button>
+                        <button id="exportSupabaseBtn" class="px-10 py-4 bg-[#000080] text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-blue-900 transition-all">SAVE</button>
+                        <button id="cancelSopBtn" class="px-6 py-4 text-xs text-slate-400 font-black uppercase hover:text-red-500 transition-colors">Cancel</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 pb-32">
+                    <div class="xl:col-span-2 space-y-8">
+                        <div class="bg-white rounded-[32px] border border-slate-200 p-8 shadow-sm">
+                            <div class="border-b border-slate-100 mb-8">
+                                <div id="tabsContainer" class="flex flex-wrap gap-2 items-center"></div>
+                            </div>
+                            <div id="uploadArea" class="bg-slate-50 py-32 rounded-3xl border-2 border-dashed border-slate-200 text-center cursor-pointer hover:bg-slate-100 transition-all">
+                                <i data-lucide="image-plus" class="w-12 h-12 text-slate-300 mx-auto mb-4"></i>
+                                <p class="font-black text-slate-400 uppercase text-xs tracking-widest">Upload Image</p>
+                                <input type="file" id="fileInput" class="hidden" accept="image/*">
+                            </div>
+                            <div id="editorArea" class="hidden space-y-6">
+                                <div class="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                                    <div class="flex gap-2" id="toolBox">
+                                        <button id="toolRed" class="tool-btn active p-3 rounded-xl"><div class="w-5 h-5 rounded-full bg-red-500 shadow-sm"></div></button>
+                                        <button id="toolBlue" class="tool-btn p-3 rounded-xl"><div class="w-5 h-5 rounded-full bg-blue-500 shadow-sm"></div></button>
+                                        <button id="toolGreen" class="tool-btn p-3 rounded-xl"><div class="w-5 h-5 rounded-full bg-green-500 shadow-sm"></div></button>
+                                        <button id="toolOrange" class="tool-btn p-3 rounded-xl"><div class="w-5 h-5 rounded-full bg-orange-500 shadow-sm"></div></button>
+                                        <button id="toolPurple" class="tool-btn p-3 rounded-xl"><div class="w-5 h-5 rounded-full bg-purple-500 shadow-sm"></div></button>
+                                        <button id="toolArrow" class="tool-btn p-3 rounded-xl"><i data-lucide="arrow-up-right" class="w-5 h-5"></i></button>
+                                        <button id="toolOperator" class="tool-btn p-3 rounded-xl"><i data-lucide="user-cog" class="w-5 h-5"></i></button>
+                                    </div>
+                                    <button onclick="clearCurrentImage()" class="px-5 py-3 text-xs font-black text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors uppercase tracking-widest">Remove Image</button>
+                                </div>
+                                <div class="canvas-container" id="canvasContainer">
+                                    <canvas id="mainCanvas"></canvas>
+                                    <div id="markersOverlay" class="absolute inset-0 pointer-events-none"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-8">
+                        <div class="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm h-[500px] flex flex-col">
+                            <div class="flex items-center justify-between mb-8">
+                                <h3 class="font-black text-[#000080] text-xs uppercase tracking-widest flex items-center gap-2"><i data-lucide="list-ordered" class="w-4 h-4"></i> INSTRUCTION STEPS</h3>
+                                <button id="addManualBtn" class="bg-blue-600 text-white text-[10px] px-4 py-2 rounded-xl font-black hover:bg-blue-700 transition-colors shadow-md shadow-blue-500/10">+ ADD</button>
+                            </div>
+                            <div class="flex-grow overflow-y-auto pr-2 custom-scrollbar" id="tableBody"></div>
+                        </div>
+                        <div class="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm">
+                            <h3 class="font-black text-red-600 text-xs mb-6 uppercase tracking-widest flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4"></i> CRITICAL WARNINGS</h3>
+                            <div id="warningsContainer" class="space-y-3"></div>
+                            <button id="addWarningBtn" class="mt-6 w-full py-4 border-2 border-dashed border-red-100 text-red-400 text-[10px] rounded-2xl font-black hover:bg-red-50 hover:border-red-200 transition-all uppercase tracking-widest">+ ADD WARNING</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Operator View Screen -->
+    <div id="operatorView" class="flex flex-col">
+        <header class="bg-[#000080] text-white p-6 sticky top-0 z-50 flex items-center justify-between shadow-xl">
+            <div class="flex items-center gap-4">
+                <div id="opLogoContainer" class="w-12 h-12 bg-white rounded-xl p-2 flex items-center justify-center shadow-inner"></div>
+                <div>
+                    <h1 id="opSopTitle" class="font-black text-lg leading-none uppercase tracking-tight">INSTRUCTION TITLE</h1>
+                    <p id="opSopSubtitle" class="text-[11px] opacity-60 font-bold uppercase tracking-widest mt-1">PROJECT CODE</p>
+                    <p id="opLastEditInfo" class="text-[9px] font-bold uppercase tracking-widest mt-1.5 border-t border-white/20 pt-1 text-white opacity-100"></p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="opModeBadge" class="px-4 py-2 bg-white/10 border border-white/20 rounded-full text-[10px] font-black uppercase tracking-widest">Operator View</span>
+                <button onclick="exitOperatorView()" class="bg-red-500/20 hover:bg-red-500/40 p-3 rounded-xl transition-colors text-white"><i data-lucide="log-out" class="w-5 h-5"></i></button>
+            </div>
+        </header>
+        <main class="p-6 space-y-8 max-w-4xl mx-auto w-full">
+            <div id="opWarningsArea" class="hidden bg-red-50 border-l-8 border-red-600 p-6 rounded-2xl shadow-sm"></div>
+            <div class="space-y-4">
+                <div id="opMedia" class="relative"></div>
+                <div id="opNavigation" class="hidden flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <button onclick="prevOpImage()" class="op-slider-btn"><i data-lucide="chevron-left"></i></button>
+                    <div class="text-center"><span id="opImageCounter" class="text-xs font-black text-slate-400 uppercase tracking-widest">Image 1 / 1</span></div>
+                    <button onclick="nextOpImage()" class="op-slider-btn"><i data-lucide="chevron-right"></i></button>
+                </div>
+            </div>
+            <div id="opStepsList" class="space-y-4 pb-12"></div>
+        </main>
+    </div>
+
+    <div id="loading" class="loading-overlay">
+        <div class="w-16 h-16 border-4 border-[#000080] border-t-transparent rounded-full animate-spin mb-6"></div>
+        <p class="font-black text-[#000080] text-lg uppercase tracking-tighter" id="loadingText">Loading...</p>
+    </div>
+
+    <!-- QR Modal -->
+    <div id="qrModal" class="fixed inset-0 bg-black/70 z-[9995] hidden items-center justify-center p-4 backdrop-blur-md">
+        <div class="bg-white rounded-[40px] max-w-xs w-full p-8 shadow-2xl text-center relative animate-in zoom-in duration-300">
+            <h3 class="text-xl font-black mb-6 uppercase tracking-tight text-slate-900" id="qrModalTitle">Instruction Info</h3>
+            <div id="qrcode" class="bg-white p-4 rounded-3xl border border-slate-100 inline-block mb-6 shadow-sm"></div>
+            <p class="text-slate-400 text-[10px] mb-8 uppercase font-black tracking-widest">Instruction Direct Link</p>
+            <div class="flex flex-col gap-3">
+                <button id="copyQrLinkBtn" onclick="copyQrLink()" class="w-full py-4 bg-orange-500 text-white rounded-2xl font-black uppercase text-xs shadow-lg hover:bg-orange-600 transition-all flex items-center justify-center gap-2">
+                    <i data-lucide="copy" class="w-4 h-4"></i> <span id="copyLinkText">Copy Link</span>
+                </button>
+                <button id="downloadQrPngBtn" class="w-full py-4 bg-[#000080] text-white rounded-2xl font-black uppercase text-xs shadow-lg hover:bg-blue-900 transition-all flex items-center justify-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i> Download QR (PNG)
+                </button>
+                <button onclick="get('qrModal').classList.add('hidden'); get('qrModal').classList.remove('flex');" class="w-full py-4 bg-slate-100 text-slate-400 rounded-2xl font-black uppercase text-xs hover:bg-slate-200 transition-colors">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const EMAILJS_PUBLIC_KEY = "4XqKGggT6gfIKx4GK"; 
+        const EMAILJS_SERVICE_ID = "service_mmf71yb"; 
+        const EMAILJS_CODE_TEMPLATE = "template_s5557tc"; 
+        const EMAILJS_INFO_TEMPLATE = "template_xi0w9bn"; 
+
+        const SUPABASE_URL = 'https://rqfvepaidqmagxymjajp.supabase.co'; 
+        const SUPABASE_ANON_KEY = 'sb_publishable_JpwitHutc1HlchWlUkqnEg_ySn75yNM';
+        const BUCKET_NAME = 'sop-pdfs'; 
+        const CONFIG_PATH = 'public/config/project_auth.json';
+        const ADMIN_USER = "eldor", ADMIN_PASS = "eldor123";
+
+        window.get = function(id) { return document.getElementById(id); };
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let currentUser = { role: 'guest', project: null };
+        let dynamicAuth = {}; 
+        let activeProject = null, activeIdx = 0, images = [null], points = [], arrows = [], warnings = [], currentMode = 'red', lastColor = 'red', tempArrowStart = null, ctx = null;
+        let pendingPath = null; 
+        let loginPurpose = 'system'; 
+        let currentSopPath = null; 
+        let currentlyEditingProject = null; 
+        
+        let newSopDraft = null;
+        let opCurrentSop = null;
+        let opActiveIdx = 0;
+
+        let generatedResetCode = null;
+        let resetTargetProjectData = null;
+        let lastEnteredEmail = "";
+
+        let loadedSopIsEdited = false; 
+        let isDirty = false;             
+
+        let currentQrLink = ""; 
+
+        window.onload = async function() {
+            try {
+                if(EMAILJS_PUBLIC_KEY) emailjs.init(EMAILJS_PUBLIC_KEY);
+            } catch(e) { console.error("EmailJS Init Error:", e); }
+
+            const canvas = get('mainCanvas');
+            if(canvas) ctx = canvas.getContext('2d');
+            await loadDynamicAuth();
+            attachListeners();
+            lucide.createIcons();
+
+            const params = new URLSearchParams(window.location.search);
+            const viewParam = params.get('view'); 
+            
+            if (viewParam) {
+                pendingPath = viewParam.replace(/^\/+/, ''); 
+                showModeSelection(pendingPath);
+            } else {
+                const isAdmin = localStorage.getItem('isEldor') === 'true';
+                if (isAdmin) loginSuccess('admin', null);
+                else if (get('loginScreen')) get('loginScreen').style.display = 'flex';
+            }
+
+            window.addEventListener('keydown', function(e) {
+                if (get('operatorView').style.display === 'flex') {
+                    if (e.key === 'ArrowRight') nextOpImage();
+                    if (e.key === 'ArrowLeft') prevOpImage();
+                }
+            });
+        };
+
+        function getEditStatusString(data) {
+            const now = new Date();
+            const dateStr = data.lastEditedAt || (now.toLocaleDateString('en-GB') + ' ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+            let user = data.lastEditedBy || (currentUser.project || "ELDOR");
+            let displayUser = user.toUpperCase();
+            if (!displayUser.includes("ADMIN")) {
+                displayUser = displayUser + " ADMIN";
+            }
+            if (!data.isEdited) {
+                return `ORIGINAL VERSION, ${displayUser}, ${dateStr}`;
+            } else {
+                return `LAST EDITED BY: ${displayUser}, ${dateStr}`;
+            }
+        }
+
+        function updateRevisionBtnUI() {
+            const btn = get('viewRevisionBtn');
+            const label = get('viewRevisionLabel');
+            const icon = get('viewRevisionIcon');
+            if (!currentSopPath || !btn) return;
+            btn.classList.remove('hidden');
+            btn.classList.add('flex');
+            if (isDirty) {
+                label.innerText = "COMPARE WITH SAVED";
+                btn.className = "px-6 py-4 bg-orange-50 text-orange-600 border border-orange-200 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-orange-100 transition-all flex items-center gap-2 shadow-sm";
+                if(icon) icon.setAttribute('data-lucide', 'arrow-left-right');
+            } else if (!loadedSopIsEdited) {
+                label.innerText = "ORIGINAL VERSION (LATEST)";
+                btn.className = "px-6 py-4 bg-green-50 text-green-600 border border-green-200 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-green-100 transition-all flex items-center gap-2 border border-green-100 shadow-sm";
+                if(icon) icon.setAttribute('data-lucide', 'check-circle');
+            } else {
+                label.innerText = "VIEW PREVIOUS REVISION";
+                btn.className = "px-6 py-4 bg-blue-50 text-[#000080] border border-blue-200 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-blue-100 transition-all flex items-center gap-2 border border-blue-100 shadow-sm";
+                if(icon) icon.setAttribute('data-lucide', 'history');
+            }
+            lucide.createIcons();
+        }
+
+        function setModified(status) {
+            isDirty = status;
+            updateRevisionBtnUI();
+        }
+
+        function openForgotPassModal() {
+            get('forgotPassModal').classList.remove('hidden');
+            get('forgotPassModal').classList.add('flex');
+            get('forgotEmailStage').classList.remove('hidden');
+            get('forgotVerifyStage').classList.add('hidden');
+            get('forgotPassStatus').innerText = "Enter your company email.";
+            get('forgotPassStatus').className = "text-slate-400 text-[10px] mt-1 font-bold uppercase text-center leading-relaxed";
+            get('forgotEmailInput').value = "";
+            get('verificationCodeInput').value = "";
+        }
+
+        function closeForgotPassModal() {
+            get('forgotPassModal').classList.add('hidden');
+            get('forgotPassModal').classList.remove('flex');
+            generatedResetCode = null;
+        }
+
+        async function handleSendResetCode() {
+            const emailInput = get('forgotEmailInput').value.trim().toLowerCase();
+            if(!emailInput) return showMessage("Missing Info", "Please enter an email address.");
+
+            const isNisanAddress = emailInput === 'nisanaskr@gmail.com';
+            const isEldorDomain = emailInput.includes('@eldor');
+
+            if(!isNisanAddress && !isEldorDomain) {
+                return showMessage("Access Denied", "This email address is not authorized for password recovery.\nOnly nisanaskr@gmail.com and emails containing @eldor can be used.");
+            }
+
+            lastEnteredEmail = emailInput;
+            toggleLoading(true, "Sending code...");
+
+            resetTargetProjectData = null;
+
+            let contextProjectId = null;
+            if (pendingPath) {
+                const pathParts = pendingPath.split('/');
+                if (pathParts.length >= 3) {
+                    contextProjectId = pathParts[2].toUpperCase();
+                }
+            }
+
+            if (contextProjectId && dynamicAuth[contextProjectId]) {
+                const proj = dynamicAuth[contextProjectId];
+                resetTargetProjectData = { id: contextProjectId, user: proj.user, pass: proj.pass, name: proj.name || contextProjectId };
+            } 
+            else {
+                for(let key in dynamicAuth) {
+                    const proj = dynamicAuth[key];
+                    if(proj.email && proj.email.toLowerCase() === emailInput) {
+                        resetTargetProjectData = { id: key, user: proj.user, pass: proj.pass, name: proj.name || key };
+                        break;
+                    }
+                }
+            }
+
+            if (!resetTargetProjectData) {
+                toggleLoading(false);
+                return showMessage("No Record Found", "No project record matching the email or the scanned QR code was found.");
+            }
+
+            generatedResetCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+            try {
+                const templateParams = {
+                    to_email: emailInput,
+                    to_name: resetTargetProjectData.name,
+                    verification_code: generatedResetCode,
+                    app_name: "ELDOR SOP System"
+                };
+
+                const response = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_CODE_TEMPLATE, templateParams);
+                
+                if(response.status === 200) {
+                    toggleLoading(false);
+                    get('forgotEmailStage').classList.add('hidden');
+                    get('forgotVerifyStage').classList.remove('hidden');
+                    get('forgotPassStatus').innerText = "6-digit verification code has been successfully sent to your email.";
+                    get('forgotPassStatus').className = "text-blue-600 text-[11px] mt-1 font-black uppercase text-center bg-blue-50 p-2 rounded-lg shadow-sm animate-pulse";
+                } else {
+                    throw new Error("Server did not respond.");
+                }
+            } catch (err) {
+                toggleLoading(false);
+                showMessage("Service Error", "Code could not be sent.\nDetail: " + (err.text || err.message || "Unknown"));
+            }
+        }
+
+        async function handleVerifyCode() {
+            const enteredCode = get('verificationCodeInput').value.trim();
+            if(!enteredCode) return showMessage("Error", "Please enter the code.");
+
+            if(enteredCode === generatedResetCode) {
+                if(resetTargetProjectData) {
+                    toggleLoading(true, "Sending access information...");
+                    try {
+                        const messageBody = `Username: ${resetTargetProjectData.user}\nPassword: ${resetTargetProjectData.pass}`;
+                        const infoParams = {
+                            to_email: lastEnteredEmail,
+                            subject: `${resetTargetProjectData.name} - System Access Information`,
+                            message: messageBody
+                        };
+                        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_INFO_TEMPLATE, infoParams);
+                        toggleLoading(false);
+                        showMessage("Success", `Email address verified.\n\nAccess credentials for ${resetTargetProjectData.name} have been sent to ${lastEnteredEmail}.`, "success");
+                        closeForgotPassModal();
+                    } catch (e) {
+                        toggleLoading(false);
+                        showMessage("Error", "Verification successful but an error occurred while sending info via email.");
+                    }
+                } else {
+                    closeForgotPassModal();
+                }
+            } else {
+                showMessage("Error", "Invalid code. Please check your email.");
+            }
+        }
+
+        async function loadDynamicAuth() {
+            try {
+                const { data } = await supabaseClient.storage.from(BUCKET_NAME).download(CONFIG_PATH);
+                if (data) dynamicAuth = JSON.parse(await data.text());
+            } catch (e) { dynamicAuth = {}; }
+        }
+
+        async function saveDynamicAuthToSupabase() {
+            try {
+                const blob = new Blob([JSON.stringify(dynamicAuth)], { type: 'application/json' });
+                await supabaseClient.storage.from(BUCKET_NAME).upload(CONFIG_PATH, blob, { upsert: true, contentType: 'application/json' });
+            } catch (e) { console.error("Auth data save error:", e); }
+        }
+
+        function showMessage(title, text, type = 'error') {
+            get('msgTitle').innerText = title; get('msgText').innerText = text;
+            const icon = get('msgIcon');
+            if (type === 'error') {
+                icon.className = "w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-6 bg-red-100 text-red-600";
+                icon.innerHTML = '<i data-lucide="alert-triangle" class="w-8 h-8"></i>';
+            } else if (type === 'success') {
+                icon.className = "w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-6 bg-green-100 text-green-600";
+                icon.innerHTML = '<i data-lucide="check-circle" class="w-8 h-8"></i>';
+            }
+            get('msgBox').classList.remove('hidden'); get('msgBox').classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function showConfirm(title, text, onConfirm, iconType = 'red') {
+            get('confirmTitle').innerText = title; get('confirmText').innerText = text;
+            const modal = get('confirmModal');
+            const iconBox = get('confirmIcon');
+            if(iconType === 'orange') { iconBox.className = "w-20 h-20 bg-orange-50 rounded-full mx-auto flex items-center justify-center text-orange-600"; iconBox.innerHTML = '<i data-lucide="save" class="w-10 h-10"></i>'; }
+            else { iconBox.className = "w-20 h-20 bg-red-50 rounded-full mx-auto flex items-center justify-center text-red-600"; iconBox.innerHTML = '<i data-lucide="trash-2" class="w-10 h-10"></i>'; }
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            get('confirmYesBtn').onclick = function() { modal.classList.add('hidden'); modal.classList.remove('flex'); onConfirm(); };
+            get('confirmNoBtn').onclick = function() { modal.classList.add('hidden'); modal.classList.remove('flex'); };
+            lucide.createIcons();
+        }
+
+        function showQr(path, title) { 
+            if (!path) return;
+            const cleanPath = path.replace(/^\/+/, '');
+            let currentAddr = window.location.href.split('?')[0];
+            const gatewayUrl = currentAddr.replace(/\/$/, '') + "?view=" + encodeURIComponent(cleanPath);
+            currentQrLink = gatewayUrl; 
+            
+            const qrBox = get('qrcode'); 
+            if (qrBox) {
+                qrBox.innerHTML = ''; 
+                try {
+                    new QRCode(qrBox, { text: gatewayUrl, width: 220, height: 220, colorDark: "#000080", correctLevel: QRCode.CorrectLevel.M }); 
+                    get('qrModalTitle').innerText = title; 
+                    get('qrModal').classList.remove('hidden'); 
+                    get('qrModal').classList.add('flex');
+                    get('copyLinkText').innerText = "Copy Link";
+                    get('downloadQrPngBtn').onclick = function() { downloadQrWithTitle(title); };
+                } catch (err) { console.error(err); }
+            }
+        }
+
+        function copyQrLink() {
+            if (!currentQrLink) return;
+            const el = document.createElement('textarea');
+            el.value = currentQrLink;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            const btnText = get('copyLinkText');
+            const originalText = btnText.innerText;
+            btnText.innerText = "COPIED!";
+            setTimeout(() => { btnText.innerText = originalText; }, 2000);
+        }
+
+        function createQrCanvasWithTitle(sourceCanvas, title) {
+            const tempCanvas = document.createElement('canvas'); const tempCtx = tempCanvas.getContext('2d');
+            const qrSize = sourceCanvas.width; 
+            const totalWidth = 360; 
+            const totalHeight = Math.floor(totalWidth * (80/90)); 
+            tempCanvas.width = totalWidth; 
+            tempCanvas.height = totalHeight;
+            tempCtx.fillStyle = '#ffffff'; 
+            tempCtx.fillRect(0, 0, totalWidth, totalHeight);
+            const titleFontSize = 26; const footerFontSize = 10; const spacing = 15;
+            const contentHeight = titleFontSize + spacing + qrSize + spacing + footerFontSize;
+            const startY = (totalHeight - contentHeight) / 2;
+            tempCtx.fillStyle = '#000080'; 
+            tempCtx.font = `bold ${titleFontSize}px Inter, sans-serif`; 
+            tempCtx.textAlign = 'center'; 
+            tempCtx.textBaseline = 'top';
+            const displayTitle = title.length > 22 ? title.substring(0, 19) + '...' : title;
+            tempCtx.fillText(displayTitle.toUpperCase(), totalWidth / 2, startY);
+            const qrStartX = (totalWidth - qrSize) / 2;
+            tempCtx.drawImage(sourceCanvas, qrStartX, startY + titleFontSize + spacing);
+            tempCtx.fillStyle = '#94a3b8'; 
+            tempCtx.font = `900 ${footerFontSize}px Inter, sans-serif`; 
+            tempCtx.textAlign = 'center';
+            tempCtx.textBaseline = 'top';
+            tempCtx.fillText('ELDOR SOP SYSTEM - ACCESS QR', totalWidth / 2, startY + titleFontSize + spacing + qrSize + spacing);
+            return tempCanvas;
+        }
+
+        function downloadQrWithTitle(title) {
+            const sourceCanvas = get('qrcode').querySelector('canvas');
+            if (!sourceCanvas) return;
+            const finalCanvas = createQrCanvasWithTitle(sourceCanvas, title);
+            const link = document.createElement('a'); link.download = `SOP_QR_${title.replace(/\s+/g, '_')}.png`; link.href = finalCanvas.toDataURL('image/png'); link.click();
+        }
+
+        async function downloadAllProjectQrs(projName) {
+            toggleLoading(true, `Processing: ${projName}...`);
+            try {
+                const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`public/data/${projName}`);
+                const jsonFiles = (files || []).filter(f => f.name.endsWith('.json'));
+                if (jsonFiles.length === 0) { showMessage("Error", "No documents found in this project."); return; }
+                const zip = new JSZip(); const folder = zip.folder(`${projName}_QR_Codes`); const hiddenContainer = get('hiddenQrContainer');
+                for (let i = 0; i < jsonFiles.length; i++) {
+                    const f = jsonFiles[i]; const path = `public/data/${projName}/${f.name}`;
+                    const { data } = await supabaseClient.storage.from(BUCKET_NAME).download(path);
+                    const s = JSON.parse(await data.text()); const sopTitle = s.title || f.name.replace('.json', '');
+                    hiddenContainer.innerHTML = '';
+                    let currentAddr = window.location.href.split('?')[0];
+                    const gatewayUrl = currentAddr.replace(/\/$/, '') + "?view=" + encodeURIComponent(path);
+                    new QRCode(hiddenContainer, { text: gatewayUrl, width: 220, height: 220, colorDark: "#000080", correctLevel: QRCode.CorrectLevel.M });
+                    const sourceCanvas = hiddenContainer.querySelector('canvas');
+                    if (sourceCanvas) {
+                        const finalCanvas = createQrCanvasWithTitle(sourceCanvas, sopTitle);
+                        const dataUrl = finalCanvas.toDataURL('image/png').split(',')[1];
+                        folder.file(`${sopTitle.replace(/[^a-zA-Z0-9]/g, '_')}_QR.png`, dataUrl, {base64: true});
+                    }
+                    toggleLoading(true, `Preparing: ${i+1}/${jsonFiles.length}`);
+                }
+                const content = await zip.generateAsync({type: "blob"});
+                const link = document.createElement('a'); link.download = `${projName}_QR_ARCHIVE.zip`; link.href = URL.createObjectURL(content); link.click();
+                showMessage("Success", `${jsonFiles.length} QRs packaged.`, "success");
+            } catch (err) { showMessage("Error", "ZIP could not be created."); } finally { toggleLoading(false); get('hiddenQrContainer').innerHTML = ''; }
+        }
+
+        async function printAllProjectQrs(projName) {
+            toggleLoading(true, `Preparing print: ${projName}...`);
+            try {
+                const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`public/data/${projName}`);
+                const jsonFiles = (files || []).filter(f => f.name.endsWith('.json'));
+                if (jsonFiles.length === 0) { showMessage("Error", "No documents found."); return; }
+                const items = []; const hiddenContainer = get('hiddenQrContainer');
+                for (let i = 0; i < jsonFiles.length; i++) {
+                    const f = jsonFiles[i]; const path = `public/data/${projName}/${f.name}`;
+                    const { data } = await supabaseClient.storage.from(BUCKET_NAME).download(path);
+                    const s = JSON.parse(await data.text()); const sopTitle = s.title || f.name.replace('.json', '');
+                    hiddenContainer.innerHTML = '';
+                    let currentAddr = window.location.href.split('?')[0];
+                    const gatewayUrl = currentAddr.replace(/\/$/, '') + "?view=" + encodeURIComponent(path);
+                    new QRCode(hiddenContainer, { text: gatewayUrl, width: 220, height: 220, colorDark: "#000080", correctLevel: QRCode.CorrectLevel.M });
+                    const sourceCanvas = hiddenContainer.querySelector('canvas');
+                    if (sourceCanvas) {
+                        const finalCanvas = createQrCanvasWithTitle(sourceCanvas, sopTitle);
+                        const dataUrl = finalCanvas.toDataURL('image/png');
+                        items.push({ img: dataUrl });
+                    }
+                }
+                let printHtml = `<html><head><title>Print QRs</title><style>
+                body { margin: 0; padding: 0; background: #fff; }
+                .page { width: 210mm; height: 297mm; padding: 10mm; display: grid; grid-template-columns: 95mm 95mm; grid-template-rows: 135mm 135mm; gap: 5mm; page-break-after: always; box-sizing: border-box; justify-content: center; align-content: center; }
+                .qr-card { width: 30mm; height: 30mm; border: 0.5mm solid #000000 !important; display: flex; justify-content: center; align-items: center; background: #ffffff; overflow: hidden; box-sizing: border-box; margin: auto; }
+                .qr-card img { max-width: 99%; max-height: 99%; display: block; object-fit: contain; }
+                @media print { body { background: none; -webkit-print-color-adjust: exact; } .page { margin: 0; border: none; } }
+                </style></head><body>`;
+                for (let i = 0; i < items.length; i += 4) {
+                    printHtml += `<div class="page">`;
+                    for (let j = i; j < i + 4 && j < items.length; j++) { printHtml += `<div class="qr-card"><img src="${items[j].img}"></div>`; }
+                    printHtml += `</div>`;
+                }
+                printHtml += `</body></html>`;
+                const printWin = window.open('', '_blank');
+                if (printWin) {
+                    printWin.document.write(printHtml); printWin.document.close();
+                    const checkLoaded = setInterval(() => {
+                        if (printWin.document.readyState === 'complete') {
+                            clearInterval(checkLoaded); printWin.focus();
+                            setTimeout(() => { printWin.print(); }, 500);
+                        }
+                    }, 500);
+                }
+            } catch (err) { showMessage("Error", "Print failed."); } finally { toggleLoading(false); get('hiddenQrContainer').innerHTML = ''; }
+        }
+
+        function saveCurrentToDraft() {
+            if (currentSopPath === null && (points.length > 0 || get('sopTitleInput').value.trim() !== '')) {
+                newSopDraft = {
+                    title: get('sopTitleInput').value,
+                    subtitle: activeProject,
+                    points: JSON.parse(JSON.stringify(points)),
+                    arrows: JSON.parse(JSON.stringify(arrows)),
+                    warnings: JSON.parse(JSON.stringify(warnings)),
+                    logo: get('logoPreview').src || null,
+                    images: images.map(img => img ? (img.src || img) : null)
+                };
+                renderDraftNotice();
+            }
+        }
+
+        function loadDraft() {
+            if (!newSopDraft) return;
+            resetApp();
+            points = newSopDraft.points; arrows = newSopDraft.arrows; warnings = newSopDraft.warnings;
+            get('sopTitleInput').value = newSopDraft.title;
+            activeProject = newSopDraft.subtitle;
+            const projConf = dynamicAuth[activeProject.toUpperCase()];
+            const projLogo = projConf?.logo;
+            const projName = projConf?.name || activeProject;
+            get('sopSubtitleInput').value = projName;
+            if(projLogo) { get('logoPreview').src = projLogo; get('logoPreview').classList.remove('hidden'); get('logoPlaceholder').classList.add('hidden'); }
+            else if(newSopDraft.logo) { get('logoPreview').src = newSopDraft.logo; get('logoPreview').classList.remove('hidden'); get('logoPlaceholder').classList.add('hidden'); }
+            toggleLoading(true, "Loading draft...");
+            (async () => {
+                const sImages = newSopDraft.images || [null]; images = [];
+                for(let i=0; i<sImages.length; i++) {
+                    if(sImages[i]) {
+                        const img = new Image(); img.src = sImages[i];
+                        await new Promise(r => img.onload = r); images.push(img);
+                    } else { images.push(null); }
+                }
+                renderAll(); renderWarnings();
+                get('projectEmptyState').classList.add('hidden'); get('sopEditor').classList.remove('hidden');
+                toggleLoading(false);
+                setModified(true);
+            })();
+        }
+
+        function deleteDraft() {
+            if (!newSopDraft) return;
+            showConfirm("Delete Draft", "Existing draft data will be deleted. Are you sure?", function() {
+                newSopDraft = null; renderDraftNotice(); showMessage("Info", "Draft deleted.", "success");
+            });
+        }
+
+        function renderDraftNotice() {
+            const container = get('draftContainer');
+            if (newSopDraft) {
+                container.innerHTML = `
+                    <div class="flex items-center gap-2 mb-3 animate-in slide-in-from-left duration-300">
+                        <div class="draft-notice" onclick="loadDraft()">
+                            <i data-lucide="edit-3" class="w-4 h-4"></i>
+                            <span class="truncate">Ongoing Draft</span>
+                        </div>
+                        <button onclick="deleteDraft()" class="draft-delete-btn">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                `;
+                lucide.createIcons();
+            } else { container.innerHTML = ''; }
+        }
+
+        function autoResizeStepArea(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+
+        function clearCurrentImage() {
+            showConfirm("Remove Image", "Do you want to delete this image and all its markers?", function() {
+                images[activeIdx] = null;
+                points = points.filter(p => p.imgIdx !== activeIdx || p.isManual);
+                arrows = arrows.filter(a => a.imgIdx !== activeIdx);
+                renderAll();
+                setModified(true);
+            });
+        }
+
+        function removeTab(index) {
+            if (images.length <= 1) { showMessage("Warning", "At least one tab must remain."); return; }
+            showConfirm("Delete Tab", `Tab ${index + 1} will be deleted. Are you sure?`, function() {
+                points = points.filter(p => p.imgIdx !== index || p.isManual);
+                arrows = arrows.filter(a => a.imgIdx !== index);
+                points.forEach(p => { if(!p.isManual && p.imgIdx > index) p.imgIdx--; });
+                arrows.forEach(a => { if(a.imgIdx > index) a.imgIdx--; });
+                images.splice(index, 1);
+                if (activeIdx >= images.length) activeIdx = images.length - 1;
+                renderAll();
+                setModified(true);
+            });
+        }
+
+        function renderTabs() {
+            const container = get('tabsContainer'); if(!container) return;
+            container.innerHTML = '';
+            images.forEach((img, i) => {
+                const btn = document.createElement('button');
+                btn.className = `tab-btn relative px-4 py-3 text-xs font-black uppercase tracking-widest whitespace-nowrap shrink-0 ${activeIdx === i ? 'active' : ''}`;
+                btn.innerHTML = `<span>Image ${i + 1}</span><span class="ml-2 p-1 hover:bg-red-50 hover:text-white rounded-full transition-colors text-[10px] font-black leading-none" onclick="event.stopPropagation(); removeTab(${i})">✕</span>`;
+                btn.onclick = function() { activeIdx = i; renderAll(); };
+                container.appendChild(btn);
+            });
+            const addBtn = document.createElement('button');
+            addBtn.className = "px-4 py-3 text-[#000080] hover:text-blue-900 transition-colors shrink-0 flex items-center justify-center";
+            addBtn.innerHTML = '<i data-lucide="plus-circle" class="w-6 h-6"></i>';
+            addBtn.onclick = function() { images.push(null); activeIdx = images.length - 1; renderAll(); setModified(true); };
+            container.appendChild(addBtn);
+            lucide.createIcons();
+        }
+
+        function openEditProjectAuth(projId) {
+            currentlyEditingProject = projId; 
+            const auth = dynamicAuth[projId.toUpperCase()] || { user: '', pass: '', logo: null, name: '' };
+            get('editProjectNameInput').value = auth.name || projId;
+            get('editProjectUserInput').value = auth.user;
+            get('editProjectPassInput').value = auth.pass;
+            get('editProjectAuthTitle').innerText = `${projId} INFORMATION`;
+            const p = get('editProjectLogoPreview');
+            const h = get('editProjectLogoPlaceholder');
+            if(auth.logo) { p.src = auth.logo; p.classList.remove('hidden'); h.classList.add('hidden'); }
+            else { p.src = ""; p.classList.add('hidden'); h.classList.remove('hidden'); }
+            get('editProjectAuthModal').classList.remove('hidden');
+            get('editProjectAuthModal').classList.add('flex');
+            lucide.createIcons();
+        }
+
+        async function saveEditedProjectAuth() {
+            const name = get('editProjectNameInput').value.trim().toUpperCase();
+            const user = get('editProjectUserInput').value.trim();
+            const pass = get('editProjectPassInput').value.trim();
+            const logo = get('editProjectLogoPreview').src || null;
+            if (name && user && pass && currentlyEditingProject) {
+                toggleLoading(true, "Updating...");
+                const existingEmail = dynamicAuth[currentlyEditingProject.toUpperCase()]?.email || '';
+                dynamicAuth[currentlyEditingProject.toUpperCase()] = { user: user, pass: pass, logo: logo, name: name, email: existingEmail };
+                await saveDynamicAuthToSupabase();
+                if(activeProject === currentlyEditingProject) {
+                    get('activeProjectTitle').innerText = name;
+                    if(!get('sopEditor').classList.contains('hidden')) {
+                        get('sopSubtitleInput').value = name;
+                        if(logo) { get('logoPreview').src = logo; get('logoPreview').classList.remove('hidden'); get('logoPlaceholder').classList.add('hidden'); }
+                    }
+                }
+                get('editProjectAuthModal').classList.add('hidden');
+                get('editProjectAuthModal').classList.remove('flex');
+                toggleLoading(false);
+                fetchArchive();
+                showMessage("Success", "Project information updated.", "success");
+            } else { showMessage("Missing Info", "Please fill in all fields."); }
+        }
+
+        function handleModalLogoChange(e, previewId, placeholderId) {
+            const f = e.target.files[0]; if(!f) return;
+            const r = new FileReader();
+            r.onload = (ev) => {
+                const p = get(previewId);
+                p.src = ev.target.result;
+                p.classList.remove('hidden');
+                get(placeholderId).classList.add('hidden');
+            };
+            r.readAsDataURL(f);
+        }
+
+        function attachListeners() {
+            const safeSetClick = (id, fn) => { const el = get(id); if(el) el.onclick = fn; };
+            safeSetClick('newProjectLogoBox', () => get('newProjectLogoInput').click());
+            const npl = get('newProjectLogoInput'); if(npl) npl.onchange = (e) => handleModalLogoChange(e, 'newProjectLogoPreview', 'newProjectLogoPlaceholder');
+            safeSetClick('editProjectLogoBox', () => get('editProjectLogoInput').click());
+            const epl = get('editProjectLogoInput'); if(epl) epl.onchange = (e) => handleModalLogoChange(e, 'editProjectLogoPreview', 'editProjectLogoPlaceholder');
+            safeSetClick('addNewProjectBtn', function() {
+                get('newProjectNameInput').value = ""; get('newProjectUserInput').value = ""; get('newProjectPassInput').value = "";
+                get('newProjectLogoPreview').src = ""; get('newProjectLogoPreview').classList.add('hidden');
+                get('newProjectLogoPlaceholder').classList.remove('hidden');
+                get('newProjectModal').classList.remove('hidden'); get('newProjectModal').classList.add('flex');
+            });
+            safeSetClick('saveNewProjectBtn', async function() {
+                const name = get('newProjectNameInput').value.trim().toUpperCase();
+                const user = get('newProjectUserInput').value.trim(); const pass = get('newProjectPassInput').value.trim();
+                const logo = get('newProjectLogoPreview').src || null;
+                if (name && user && pass) {
+                    toggleLoading(true, "Creating project...");
+                    dynamicAuth[name] = { user: user, pass: pass, logo: logo, name: name, email: '' }; 
+                    await saveDynamicAuthToSupabase();
+                    activeProject = name; get('newProjectModal').classList.add('hidden'); get('newProjectModal').classList.remove('flex');
+                    toggleLoading(false); openEditorForNewSop(); fetchArchive();
+                } else { showMessage("Missing Info", "Please fill in all fields."); }
+            });
+            safeSetClick('saveEditedProjectAuthBtn', saveEditedProjectAuth);
+            safeSetClick('backToGateway', function() { get('loginScreen').style.display = 'none'; get('modeSelectionScreen').style.display = 'flex'; });
+            const loginForm = get('loginForm');
+            if(loginForm) {
+                loginForm.onsubmit = function(e) {
+                    e.preventDefault();
+                    const uInp = get('usernameInput').value; const pInp = get('passwordInput').value;
+                    const isAdmin = (uInp.toUpperCase() === ADMIN_USER.toUpperCase() && pInp === ADMIN_PASS);
+                    let isProjectAuth = false; let matchedProj = null;
+                    for(const proj in dynamicAuth) {
+                        const data = dynamicAuth[proj];
+                        if(data.user === uInp && data.pass === pInp) { isProjectAuth = true; matchedProj = proj; break; }
+                    }
+                    if (loginPurpose === 'engineer_edit') {
+                        const parts = pendingPath.split('/'); const req = (parts.length > 2) ? parts[2].toUpperCase() : null;
+                        if (isAdmin || (isProjectAuth && matchedProj === req)) { 
+                            get('loginScreen').style.display = 'none'; loginSuccess(isAdmin ? 'admin' : 'project', matchedProj || uInp); loadSopData(pendingPath); 
+                        } else { get('loginError').innerText = "Access denied."; get('loginError').classList.remove('hidden'); }
+                    } else { 
+                        if (isAdmin) loginSuccess('admin', null); 
+                        else if (isProjectAuth) loginSuccess('project', matchedProj); 
+                        else { get('loginError').innerText = "Incorrect login."; get('loginError').classList.remove('hidden'); } 
+                    }
+                };
+            }
+            safeSetClick('sidebarToggle', function() { get('sidebar').classList.toggle('collapsed'); });
+            safeSetClick('startNewSopBtn', function() { openEditorForNewSop(); });
+            safeSetClick('cancelSopBtn', function() { closeEditor(); });
+            safeSetClick('mainCanvas', function(e) { handleCanvasClick(e); });
+            const fi = get('fileInput'); if(fi) fi.onchange = function(e) { handleFileChange(e); };
+            const li = get('logoInput'); if(li) li.onchange = function(e) { handleLogoChange(e); };
+            safeSetClick('uploadArea', function() { get('fileInput').click(); });
+            safeSetClick('logoUploadBox', function() { get('logoInput').click(); });
+            safeSetClick('exportSupabaseBtn', function() { handleSave(); });
+            safeSetClick('viewRevisionBtn', async function() {
+                if (!currentSopPath) return;
+                if (isDirty) {
+                    loadOperatorSop(currentSopPath, "CURRENT SAVED STATE (BEFORE EDITING)");
+                    return;
+                }
+                toggleLoading(true, "Scanning history...");
+                try {
+                    const filename = currentSopPath.split('/').pop().replace('.json', '');
+                    const historyFolder = `public/history/${activeProject}/${filename}`;
+                    const { data: historyFiles } = await supabaseClient.storage.from(BUCKET_NAME).list(historyFolder);
+                    if (historyFiles && historyFiles.length > 0) {
+                        const latestHistory = historyFiles.sort((a,b) => b.name.localeCompare(a.name))[0];
+                        loadOperatorSop(`${historyFolder}/${latestHistory.name}`, "PREVIOUS SAVED REVISION");
+                    } else {
+                        loadOperatorSop(currentSopPath, "ORIGINAL SAVED STATE");
+                    }
+                } catch(e) { loadOperatorSop(currentSopPath, "SAVED STATE"); } finally { toggleLoading(false); }
+            });
+            const sti = get('sopTitleInput'); if(sti) sti.oninput = () => setModified(true);
+            const tools = { toolRed:'red', toolBlue:'blue', toolGreen:'green', toolOrange:'orange', toolPurple:'purple', toolArrow:'arrow', toolOperator:'operator' };
+            Object.entries(tools).forEach(([id, m]) => {
+                const tel = get(id);
+                if(tel) {
+                    tel.onclick = function() {
+                        currentMode = m; if(['red','blue','green','orange', 'purple'].includes(m)) lastColor = m;
+                        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active')); tel.classList.add('active');
+                    };
+                }
+            });
+            safeSetClick('addManualBtn', function() { points.push({ type: 'blue', isManual: true, description: '', imgIdx: -1 }); renderAll(); setModified(true); });
+            safeSetClick('addWarningBtn', function() { warnings.push({ text: '' }); renderWarnings(); setModified(true); });
+        }
+
+        function loginSuccess(role, project) { 
+            currentUser = { role: role, project: project }; 
+            if (role === 'admin') localStorage.setItem('isEldor', 'true'); 
+            const ls = get('loginScreen'); if(ls) ls.style.display = 'none'; 
+            const m = get('mainApp'); if(m) { m.classList.remove('hidden'); setTimeout(() => m.style.opacity = '1', 50); }
+            if (role === 'admin' && get('addNewProjectBtn')) get('addNewProjectBtn').classList.remove('hidden'); 
+            if (role === 'project') selectProject(project); 
+            fetchArchive(); 
+        }
+
+        function logout() { localStorage.removeItem('isEldor'); window.location.reload(); }
+        
+        function showModeSelection(path) { 
+            pendingPath = path; 
+            const ms = get('modeSelectionScreen'); if(ms) ms.style.display = 'flex'; 
+        }
+
+        function handleModeChoice(mode) { 
+            const ms = get('modeSelectionScreen'); if(ms) ms.style.display = 'none'; 
+            if (mode === 'operator') loadOperatorSop(pendingPath); 
+            else { 
+                loginPurpose = 'engineer_edit'; 
+                if(get('backToGateway')) get('backToGateway').classList.remove('hidden'); 
+                if(get('loginScreen')) get('loginScreen').style.display = 'flex'; 
+            } 
+        }
+        
+        async function fetchArchive() {
+            try {
+                const { data: folders } = await supabaseClient.storage.from(BUCKET_NAME).list('public/data');
+                const list = get('archiveSidebarList'); if(!list) return;
+                list.innerHTML = '';
+                const sortedFolders = (folders || []).sort((a,b) => a.name.localeCompare(b.name));
+                for (const folder of sortedFolders) {
+                    const projId = folder.name; if (currentUser.role !== 'admin' && projId !== currentUser.project) continue;
+                    const projAuth = dynamicAuth[projId.toUpperCase()] || {};
+                    const displayProjectName = projAuth.name || projId; 
+                    const editAuthHtml = currentUser.role === 'admin' ? 
+                        `<button onclick="event.stopPropagation(); openEditProjectAuth('${projId}')" class="p-1.5 hover:bg-amber-100 rounded-lg text-amber-600" title="Edit Auth/Info"><i data-lucide="key-round" class="w-4 h-4"></i></button>` : '';
+
+                    const header = document.createElement('div');
+                    header.className = `project-group-header ${activeProject === projId ? 'active' : ''}`;
+                    header.innerHTML = `
+                        <span class="truncate font-black">${displayProjectName}</span>
+                        <div class="flex items-center gap-1">
+                            <button onclick="event.stopPropagation(); printAllProjectQrs('${projId}')" class="p-1.5 hover:bg-blue-100 rounded-lg text-blue-600"><i data-lucide="printer" class="w-4 h-4"></i></button>
+                            <button onclick="event.stopPropagation(); downloadAllProjectQrs('${projId}')" class="p-1.5 hover:bg-orange-100 rounded-lg text-orange-600"><i data-lucide="folder-down" class="w-4 h-4"></i></button>
+                            ${editAuthHtml}
+                            <button onclick="event.stopPropagation(); selectProject('${projId}'); openEditorForNewSop();" class="p-1.5 hover:bg-blue-100 rounded-lg text-[#000080]"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                            <button onclick="event.stopPropagation(); deleteWholeProject('${projId}')" class="p-1.5 hover:bg-red-100 rounded-lg text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            <i data-lucide="chevron-down" class="chevron w-4 h-4 ml-1"></i>
+                        </div>`;
+                    const content = document.createElement('div');
+                    content.className = `folder-content ${activeProject === projId ? '' : 'hidden'}`;
+                    header.onclick = function() { selectProject(projId); content.classList.toggle('hidden'); };
+                    const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`public/data/${projId}`);
+                    const jsonFiles = (files || []).filter(f => f.name.endsWith('.json'));
+                    for (const f of jsonFiles) {
+                        const path = `public/data/${projId}/${f.name}`;
+                        const div = document.createElement('div');
+                        div.className = "p-3 hover:bg-slate-100 rounded-xl cursor-pointer text-[11px] font-bold flex items-center justify-between ml-3 mt-2 border border-transparent";
+                        div.innerHTML = `<span class="truncate flex-grow mr-2 uppercase tracking-tight name-label">Loading...</span><div class="flex gap-2 items-center"><button class="text-[#000080] p-1.5 hover:bg-blue-50 rounded-lg"><i data-lucide="qr-code" class="w-4 h-4"></i></button><button class="text-slate-600 p-1.5 hover:bg-slate-200 rounded-lg"><i data-lucide="eye" class="w-4 h-4"></i></button><button class="text-red-500 p-1.5 hover:bg-red-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`;
+                        (async () => {
+                            try {
+                                const { data } = await supabaseClient.storage.from(BUCKET_NAME).download(path);
+                                const s = JSON.parse(await data.text());
+                                const label = div.querySelector('.name-label'); if (label) label.innerText = s.title || "UNTITLED";
+                                const btns = div.querySelectorAll('button');
+                                btns[0].onclick = (e) => { e.stopPropagation(); showQr(path, s.title); };
+                                btns[1].onclick = (e) => { e.stopPropagation(); showModeSelection(path); };
+                                btns[2].onclick = (e) => { e.stopPropagation(); deleteSop(path); };
+                                div.onclick = (e) => { e.stopPropagation(); loadSopData(path); };
+                            } catch (e) { if (div.querySelector('.name-label')) div.querySelector('.name-label').innerText = "ERROR"; }
+                        })();
+                        content.appendChild(div);
+                    }
+                    list.appendChild(header); list.appendChild(content);
+                }
+                lucide.createIcons();
+            } catch (e) { console.error(e); }
+        }
+
+        async function deleteWholeProject(projName) {
+            showConfirm("Delete Project", `Are you sure you want to delete project "${projName}"?`, async function() {
+                toggleLoading(true, "Deleting...");
+                try {
+                    const { data: files } = await supabaseClient.storage.from(BUCKET_NAME).list(`public/data/${projName}`);
+                    if (files && files.length > 0) { const paths = files.map(f => `public/data/${projName}/${f.name}`); await supabaseClient.storage.from(BUCKET_NAME).remove(paths); }
+                    await supabaseClient.storage.from(BUCKET_NAME).remove([`public/data/${projName}`]);
+                    delete dynamicAuth[projName.toUpperCase()]; await saveDynamicAuthToSupabase();
+                    await fetchArchive(); showMessage("Success", `Project deleted.`, "success");
+                } catch (e) { showMessage("Error", "Action failed."); } finally { toggleLoading(false); }
+            });
+        }
+
+        async function deleteSop(p) { 
+            showConfirm("Delete Instruction", "Are you sure you want to permanently delete this document?", async function() {
+                toggleLoading(true, "Deleting...");
+                try { const cleanP = p.replace(/^\/+/, ''); await supabaseClient.storage.from(BUCKET_NAME).remove([cleanP]); await fetchArchive(); } catch(e) { showMessage("Error", "Action failed."); } finally { toggleLoading(false); }
+            });
+        }
+
+        async function loadOperatorSop(path, modeTitle = "Operator View") {
+            toggleLoading(true, "Loading...");
+            try {
+                const cleanPath = path.replace(/^\/+/, ''); const { data } = await supabaseClient.storage.from(BUCKET_NAME).download(cleanPath);
+                opCurrentSop = JSON.parse(await data.text()); opActiveIdx = 0;
+                const projConf = dynamicAuth[opCurrentSop.subtitle.toUpperCase()];
+                const finalProjectName = projConf?.name || opCurrentSop.subtitle;
+                const finalLogo = projConf?.logo || opCurrentSop.logo;
+                if(get('opSopTitle')) get('opSopTitle').innerText = opCurrentSop.title; 
+                if(get('opSopSubtitle')) get('opSopSubtitle').innerText = finalProjectName; 
+                if(get('opModeBadge')) get('opModeBadge').innerText = modeTitle;
+                const opInfo = get('opLastEditInfo');
+                if(opInfo) {
+                    opInfo.innerText = getEditStatusString(opCurrentSop);
+                    opInfo.classList.remove('hidden');
+                }
+                if(get('opLogoContainer')) {
+                    if(finalLogo) get('opLogoContainer').innerHTML = `<img src="${finalLogo}" class="w-full h-full object-contain">`;
+                    else get('opLogoContainer').innerHTML = "";
+                }
+                const warnArea = get('opWarningsArea');
+                if (warnArea) {
+                    if (opCurrentSop.warnings && opCurrentSop.warnings.length > 0) {
+                        warnArea.innerHTML = opCurrentSop.warnings.map(w => `<div class="mb-2 text-red-700 font-bold flex gap-2 items-center"><i data-lucide="alert-octagon" class="w-4 h-4"></i> ${w.text}</div>`).join('');
+                        warnArea.classList.remove('hidden');
+                    } else { warnArea.classList.add('hidden'); }
+                }
+                renderOperatorSlider(); renderOperatorSteps();
+                if(get('operatorView')) get('operatorView').style.display = 'flex'; 
+                lucide.createIcons();
+            } catch(e) { showMessage("Error", "Loading failed."); } finally { toggleLoading(false); }
+        }
+
+        function renderOperatorSlider() {
+            const media = get('opMedia'); if(!media) return;
+            media.innerHTML = ''; const nav = get('opNavigation');
+            const sImages = opCurrentSop.images || []; const validImages = sImages.filter(img => img !== null);
+            if (validImages.length === 0) { if(nav) nav.classList.add('hidden'); return; }
+            if (validImages.length > 1) { if(nav) nav.classList.remove('hidden'); if(get('opImageCounter')) get('opImageCounter').innerText = `Image ${opActiveIdx + 1} / ${validImages.length}`; }
+            else { if(nav) nav.classList.add('hidden'); }
+            const currentImgSrc = validImages[opActiveIdx];
+            const div = document.createElement('div'); div.className = "relative bg-white rounded-[32px] overflow-hidden shadow-md border border-slate-200 animate-in fade-in zoom-in duration-300";
+            const img = document.createElement('img'); img.src = currentImgSrc; img.className = "w-full block"; div.appendChild(img);
+            let sc = 0;
+            opCurrentSop.points.forEach(p => {
+                const isStep = p.type === 'red' || p.isManual; if(isStep) sc++;
+                if(p.imgIdx === opActiveIdx && !p.isManual) {
+                    const mk = document.createElement('div'); mk.className = p.type === 'operator' ? 'marker-operator' : `marker marker-${p.type}`;
+                    mk.style.left = p.px + '%'; mk.style.top = p.py + '%';
+                    mk.innerHTML = p.type === 'operator' ? 'OPERATOR' : (p.type === 'red' ? sc : ''); div.appendChild(mk);
+                }
+            });
+            const arrowCanvas = document.createElement('canvas'); arrowCanvas.className = "absolute inset-0 pointer-events-none"; div.appendChild(arrowCanvas);
+            media.appendChild(div);
+            setTimeout(() => {
+                arrowCanvas.width = img.clientWidth; arrowCanvas.height = img.clientHeight; const oCtx = arrowCanvas.getContext('2d');
+                const relW = img.clientWidth / 100; const relH = img.clientHeight / 100;
+                (opCurrentSop.arrows || []).filter(a => a.imgIdx === opActiveIdx).forEach(a => { drawArrow(oCtx, a.x1 * relW, a.y1 * relH, a.x2 * relW, a.y2 * relH, a.color); });
+            }, 100);
+        }
+
+        function renderOperatorSteps() {
+            const st = get('opStepsList'); if(!st) return;
+            st.innerHTML = ''; let sc = 0;
+            opCurrentSop.points.forEach(p => {
+                if(p.type === 'red' || p.isManual) { sc++; const card = document.createElement('div'); card.className = "step-card bg-white p-6 rounded-2xl flex items-center gap-6 shadow-sm border border-slate-100"; card.innerHTML = `<div class="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-black shrink-0 shadow-lg">${sc}</div><p class="text-base font-bold text-slate-700 flex-grow">${p.description}</p>`; st.appendChild(card); }
+            });
+            lucide.createIcons();
+        }
+
+        function nextOpImage() {
+            const validLen = (opCurrentSop.images || []).filter(i => i !== null).length;
+            if (opActiveIdx < validLen - 1) { opActiveIdx++; renderOperatorSlider(); } else { opActiveIdx = 0; renderOperatorSlider(); }
+        }
+
+        function prevOpImage() {
+            const validLen = (opCurrentSop.images || []).filter(i => i !== null).length;
+            if (opActiveIdx > 0) { opActiveIdx--; renderOperatorSlider(); } else { opActiveIdx = validLen - 1; renderOperatorSlider(); }
+        }
+
+        async function loadSopData(path) {
+            if (currentSopPath === null && (points.length > 0 || get('sopTitleInput').value.trim() !== '')) { saveCurrentToDraft(); }
+            toggleLoading(true, "Loading to editor...");
+            try {
+                const cleanPath = path.replace(/^\/+/, ''); const { data } = await supabaseClient.storage.from(BUCKET_NAME).download(cleanPath);
+                const s = JSON.parse(await data.text());
+                resetApp(); 
+                currentSopPath = cleanPath; 
+                points = s.points; arrows = s.arrows; warnings = s.warnings;
+                loadedSopIsEdited = s.isEdited || false;
+                if(get('sopTitleInput')) get('sopTitleInput').value = s.title; 
+                const editInfo = get('lastEditInfo');
+                if(editInfo) editInfo.innerText = getEditStatusString(s);
+                selectProject(s.subtitle);
+                if(get('logoPreview')) {
+                    const projConf = dynamicAuth[s.subtitle.toUpperCase()];
+                    const finalLogo = projConf?.logo || s.logo;
+                    if(finalLogo) { get('logoPreview').src = finalLogo; get('logoPreview').classList.remove('hidden'); if(get('logoPlaceholder')) get('logoPlaceholder').classList.add('hidden'); }
+                    else { get('logoPreview').src = ""; get('logoPreview').classList.add('hidden'); if(get('logoPlaceholder')) get('logoPlaceholder').classList.remove('hidden'); }
+                    if(get('sopSubtitleInput')) get('sopSubtitleInput').value = projConf?.name || s.subtitle;
+                }
+                const sImages = s.images || [null]; images = [];
+                for(let i=0; i<sImages.length; i++) {
+                    if(sImages[i]) {
+                        const img = new Image(); img.src = sImages[i];
+                        await new Promise(r => img.onload = r); images.push(img);
+                    } else { images.push(null); }
+                }
+                renderAll(); renderWarnings();
+                if(get('projectEmptyState')) get('projectEmptyState').classList.add('hidden'); 
+                if(get('sopEditor')) get('sopEditor').classList.remove('hidden');
+                setModified(false);
+            } catch(e) { showMessage("Error", "Action failed."); } finally { toggleLoading(false); }
+        }
+
+        function selectProject(projId) { 
+            activeProject = projId; 
+            const projConf = dynamicAuth[projId.toUpperCase()];
+            if(get('activeProjectTitle')) get('activeProjectTitle').innerText = projConf?.name || projId; 
+            if(get('startNewSopBtn')) get('startNewSopBtn').classList.remove('hidden'); 
+            if(get('projectEmptyState')) get('projectEmptyState').classList.remove('hidden'); 
+            if(get('sopEditor')) get('sopEditor').classList.add('hidden'); 
+        }
+        
+        function openEditorForNewSop() { 
+            if (newSopDraft) {
+                showConfirm("Draft Exists", "You have an ongoing draft. Would you like to continue with it?", function() { loadDraft(); }, 'orange');
+                return;
+            }
+            resetApp(); currentSopPath = null;
+            const projAuth = dynamicAuth[activeProject.toUpperCase()];
+            if(get('sopSubtitleInput')) get('sopSubtitleInput').value = projAuth?.name || activeProject;
+            if (projAuth && projAuth.logo && get('logoPreview')) {
+                get('logoPreview').src = projAuth.logo;
+                get('logoPreview').classList.remove('hidden');
+                if(get('logoPlaceholder')) get('logoPlaceholder').classList.add('hidden');
+            }
+            if(get('projectEmptyState')) get('projectEmptyState').classList.add('hidden'); 
+            if(get('sopEditor')) get('sopEditor').classList.remove('hidden'); 
+            loadedSopIsEdited = false;
+            setModified(false);
+        }
+
+        function closeEditor() { 
+            if (currentSopPath === null && (points.length > 0 || get('sopTitleInput').value.trim() !== '')) {
+                showConfirm("Not Saved", "Your work is not saved. Do you want to save it as a draft?", function() {
+                    saveCurrentToDraft(); if(get('sopEditor')) get('sopEditor').classList.add('hidden'); if(get('projectEmptyState')) get('projectEmptyState').classList.remove('hidden');
+                });
+            } else {
+                if(get('sopEditor')) get('sopEditor').classList.add('hidden'); if(get('projectEmptyState')) get('projectEmptyState').classList.remove('hidden'); currentSopPath = null; 
+            }
+        }
+        
+        function handleCanvasClick(e) { 
+            if(!images[activeIdx]) return; 
+            const rect = get('mainCanvas').getBoundingClientRect(); 
+            const x = ((e.clientX - rect.left) / rect.width) * 100, y = ((e.clientY - rect.top) / rect.height) * 100; 
+            if (currentMode === 'arrow') { 
+                if (!tempArrowStart) tempArrowStart = { x: x, y: y }; 
+                else { 
+                    arrows.push({ x1: tempArrowStart.x, y1: tempArrowStart.y, x2: x, y2: y, color: getHexColor(lastColor), imgIdx: activeIdx }); 
+                    tempArrowStart = null; 
+                    renderAll(); 
+                    setModified(true);
+                } 
+            } else { 
+                points.push({ px: x, py: y, type: currentMode, description: '', imgIdx: activeIdx, isManual: false }); 
+                renderAll(); 
+                setModified(true);
+            } 
+        }
+        
+        function renderAll() {
+            renderTabs();
+            const img = images[activeIdx]; const canvas = get('mainCanvas');
+            if (img && ctx) { if(get('uploadArea')) get('uploadArea').classList.add('hidden'); if(get('editorArea')) get('editorArea').classList.remove('hidden'); canvas.width = 1200; canvas.height = img.height * (1200 / img.width); ctx.drawImage(img, 0, 0, 1200, canvas.height); arrows.filter(a => a.imgIdx === activeIdx).forEach(a => drawArrow(ctx, (a.x1/100)*1200, (a.y1/100)*canvas.height, (a.x2/100)*1200, (a.y2/100)*canvas.height, a.color)); } 
+            else { if(get('uploadArea')) get('uploadArea').classList.remove('hidden'); if(get('editorArea')) get('editorArea').classList.add('hidden'); }
+            const overlay = get('markersOverlay'); if(overlay) overlay.innerHTML = ''; 
+            const table = get('tableBody'); if(table) table.innerHTML = '';
+            let sc = 0;
+            points.forEach((p, i) => { 
+                const isStep = p.type === 'red' || p.isManual; if(isStep) sc++; 
+                if (p.imgIdx === activeIdx && !p.isManual && overlay) { 
+                    const m = document.createElement('div'); m.className = p.type === 'operator' ? 'marker-operator' : `marker marker-${p.type}`; 
+                    m.style.left = p.px + '%'; m.style.top = p.py + '%'; m.innerHTML = p.type === 'operator' ? 'OPERATOR' : (p.type === 'red' ? sc : ''); 
+                    m.onclick = (e) => { e.stopPropagation(); points.splice(i, 1); renderAll(); setModified(true); }; overlay.appendChild(m); 
+                } 
+                if (isStep && table) { 
+                    const row = document.createElement('div'); row.className = "flex items-start gap-3 p-4 bg-slate-50 rounded-2xl mb-3 border border-slate-100"; 
+                    const colorClass = p.isManual ? 'bg-blue-600' : 'bg-red-600';
+                    row.innerHTML = `<span class="w-6 h-6 rounded-lg ${colorClass} text-white flex items-center justify-center text-[10px] font-black shrink-0 mt-1">${sc}</span>
+                                    <textarea class="step-description-area flex-grow" oninput="points[${i}].description=this.value; autoResizeStepArea(this); setModified(true);" placeholder="Step description...">${p.description}</textarea>
+                                    <button onclick="points.splice(${i},1); renderAll(); setModified(true);" class="text-red-400 p-1 mt-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`; 
+                    table.appendChild(row); setTimeout(() => { const ta = row.querySelector('textarea'); if(ta) autoResizeStepArea(ta); }, 0);
+                } 
+            });
+            lucide.createIcons();
+        }
+
+        function getHexColor(c) { const colors = { blue: '#3b82f6', green: '#22c55e', orange: '#f97316', red: '#ef4444', purple: '#a855f7' }; return colors[c] || colors.red; }
+        function drawArrow(c, fx, fy, tx, ty, color) { const headlen = 22; const angle = Math.atan2(ty - fy, tx - fx); c.beginPath(); c.strokeStyle = color; c.lineWidth = 8; c.lineCap = "round"; c.moveTo(fx, fy); c.lineTo(tx, ty); c.stroke(); c.beginPath(); c.fillStyle = color; c.moveTo(tx, ty); c.lineTo(tx - headlen * Math.cos(angle - Math.PI/6), ty - headlen * Math.sin(angle - Math.PI/6)); c.lineTo(tx - headlen * Math.cos(angle + Math.PI/6), ty - headlen * Math.sin(angle + Math.PI/6)); c.closePath(); c.fill(); }
+        function handleFileChange(e) { const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = (ev) => { const img = new Image(); img.onload = () => { images[activeIdx] = img; renderAll(); setModified(true); }; img.src = ev.target.result; }; r.readAsDataURL(f); }
+        function handleLogoChange(e) { const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = (ev) => { const p = get('logoPreview'); if(p) { p.src = ev.target.result; p.classList.remove('hidden'); if(get('logoPlaceholder')) get('logoPlaceholder').classList.add('hidden'); setModified(true); } }; r.readAsDataURL(f); }
+        function toggleLoading(s, t) { const l = get('loading'); if(l) { if(get('loadingText')) get('loadingText').innerText = t; if(s) l.classList.add('active'); else l.classList.remove('active'); } }
+        
+        async function handleSave() { 
+            const title = get('sopTitleInput').value; 
+            if(!title) return showMessage("Missing Info", "Please enter a title."); 
+            toggleLoading(true, "Processing data..."); 
+            try { 
+                let targetPath = currentSopPath || `public/data/${activeProject}/SOP_${Date.now()}.json`;
+                const filename = targetPath.split('/').pop().replace('.json', '');
+                if (currentSopPath) {
+                    const { data: currentData } = await supabaseClient.storage.from(BUCKET_NAME).download(currentSopPath);
+                    if (currentData) {
+                        const historyPath = `public/history/${activeProject}/${filename}/BACKUP_${Date.now()}.json`;
+                        await supabaseClient.storage.from(BUCKET_NAME).upload(historyPath, currentData, { upsert: true, contentType: 'application/json' });
+                    }
+                }
+                const finalIsEdited = currentSopPath ? true : false;
+                const now = new Date();
+                const timestampStr = now.toLocaleDateString('en-GB') + ' ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                const editorName = currentUser.project || "ELDOR";
+                const state = { 
+                    title: title, 
+                    subtitle: activeProject, 
+                    points: points, 
+                    arrows: arrows, 
+                    warnings: warnings, 
+                    logo: get('logoPreview').src || null, 
+                    images: images.map(img => img ? (img.src || img) : null),
+                    isEdited: finalIsEdited,
+                    lastEditedBy: editorName,
+                    lastEditedAt: timestampStr
+                }; 
+                await supabaseClient.storage.from(BUCKET_NAME).upload(targetPath, new Blob([JSON.stringify(state)], { type: 'application/json' }), { upsert: true, contentType: 'application/json' }); 
+                newSopDraft = null; 
+                renderDraftNotice();
+                currentSopPath = targetPath; 
+                loadedSopIsEdited = finalIsEdited; 
+                const editInfo = get('lastEditInfo');
+                if(editInfo) editInfo.innerText = getEditStatusString(state);
+                toggleLoading(false); 
+                showQr(targetPath, title); 
+                fetchArchive(); 
+                setModified(false);
+            } catch (e) { showMessage("Error", e.message); toggleLoading(false); } 
+        }
+
+        function resetApp() { 
+            images = [null]; activeIdx = 0; points = []; arrows = []; warnings = []; 
+            if(get('sopTitleInput')) get('sopTitleInput').value = ''; 
+            if(get('logoPreview')) get('logoPreview').classList.add('hidden'); 
+            if(get('logoPlaceholder')) get('logoPlaceholder').classList.remove('hidden'); 
+            if(get('lastEditInfo')) get('lastEditInfo').innerText = ''; 
+            currentSopPath = null; loadedSopIsEdited = false; renderAll(); renderWarnings(); 
+            setModified(false);
+        }
+
+        function renderWarnings() { 
+            const b = get('warningsContainer'); if(!b) return;
+            b.innerHTML = ''; 
+            warnings.forEach((w, i) => { 
+                const d = document.createElement('div'); 
+                d.className = "flex gap-3 bg-red-50 p-4 rounded-2xl border border-red-100"; 
+                d.innerHTML = `<textarea class="flex-grow bg-transparent text-[11px] text-red-800 font-bold outline-none resize-none" rows="2" oninput="warnings[${i}].text=this.value; setModified(true);">${w.text}</textarea><button onclick="warnings.splice(${i},1); renderWarnings(); setModified(true);" class="text-red-300 hover:text-red-500 text-xl">×</button>`; 
+                b.appendChild(d); 
+            }); 
+        }
+
+        function exitOperatorView() { if(get('operatorView')) get('operatorView').style.display = 'none'; }
+    </script>
+</body>
+</html>
