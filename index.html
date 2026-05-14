@@ -1104,14 +1104,49 @@
                 }
                 let printHtml = `<html><head><title>Print QRs</title><style>
                 body { margin: 0; padding: 0; background: #fff; }
-                .page { width: 210mm; height: 297mm; padding: 10mm; display: grid; grid-template-columns: 95mm 95mm; grid-template-rows: 135mm 135mm; gap: 5mm; page-break-after: always; box-sizing: border-box; justify-content: center; align-content: center; }
-                .qr-card { width: 30mm; height: 30mm; border: 0.5mm solid #000000 !important; display: flex; justify-content: center; align-items: center; background: #ffffff; overflow: hidden; box-sizing: border-box; margin: auto; }
-                .qr-card img { max-width: 99%; max-height: 99%; display: block; object-fit: contain; }
-                @media print { body { background: none; -webkit-print-color-adjust: exact; } .page { margin: 0; border: none; } }
+                .page { 
+                    width: 210mm; 
+                    height: 297mm; 
+                    padding: 15mm; 
+                    display: grid; 
+                    grid-template-columns: 80mm 80mm; 
+                    grid-template-rows: 80mm 80mm 80mm; 
+                    gap: 10mm; 
+                    page-break-after: always; 
+                    box-sizing: border-box; 
+                    justify-content: center; 
+                    align-content: start; 
+                }
+                .qr-card { 
+                    width: 80mm; 
+                    height: 80mm; 
+                    border: 0.2mm solid #e2e8f0 !important; 
+                    display: flex; 
+                    justify-content: center; 
+                    align-items: center; 
+                    background: #ffffff; 
+                    overflow: hidden; 
+                    box-sizing: border-box; 
+                }
+                .qr-card img { 
+                    max-width: 95%; 
+                    max-height: 95%; 
+                    display: block; 
+                    object-fit: contain; 
+                }
+                @media print { 
+                    body { background: none; -webkit-print-color-adjust: exact; } 
+                    .page { margin: 0; border: none; } 
+                    .qr-card { border: 0.2mm solid #000 !important; }
+                }
                 </style></head><body>`;
-                for (let i = 0; i < items.length; i += 4) {
+                
+                // 8x8 cm boyutunda bir sayfaya 6 adet (2x3 grid) sığar
+                for (let i = 0; i < items.length; i += 6) {
                     printHtml += `<div class="page">`;
-                    for (let j = i; j < i + 4 && j < items.length; j++) { printHtml += `<div class="qr-card"><img src="${items[j].img}"></div>`; }
+                    for (let j = i; j < i + 6 && j < items.length; j++) { 
+                        printHtml += `<div class="qr-card"><img src="${items[j].img}"></div>`; 
+                    }
                     printHtml += `</div>`;
                 }
                 printHtml += `</body></html>`;
