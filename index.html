@@ -393,7 +393,7 @@
         </div>
     </div>
 
-    <!-- Forgot Password Modal (Updated based on image_1a6e3f.png) -->
+    <!-- Forgot Password Modal -->
     <div id="forgotPassModal" class="fixed inset-0 z-[11000] hidden items-center justify-center p-4 bg-black/60 backdrop-blur-md">
         <div class="bg-white rounded-[40px] p-10 max-w-md w-full shadow-2xl text-center animate-in zoom-in duration-300">
             <div class="w-16 h-16 bg-blue-50 rounded-full mx-auto flex items-center justify-center text-[#000080] mb-6">
@@ -1017,30 +1017,72 @@
         }
 
         function createQrCanvasWithTitle(sourceCanvas, title) {
-            const tempCanvas = document.createElement('canvas'); const tempCtx = tempCanvas.getContext('2d');
+            const tempCanvas = document.createElement('canvas'); 
+            const tempCtx = tempCanvas.getContext('2d');
             const qrSize = sourceCanvas.width; 
             const totalWidth = 360; 
-            const totalHeight = Math.floor(totalWidth * (80/90)); 
+            const margin = 20;
+            const titleFontSize = 22; 
+            const footerFontSize = 10; 
+            const spacing = 15;
+            const lineHeight = titleFontSize * 1.2;
+
+            // Pre-calculate lines for wrapping (Fix for long titles)
+            tempCtx.font = `bold ${titleFontSize}px Inter, sans-serif`;
+            const words = title.toUpperCase().split(' ');
+            let lines = [];
+            let currentLine = words[0];
+
+            for (let i = 1; i < words.length; i++) {
+                let word = words[i];
+                let width = tempCtx.measureText(currentLine + " " + word).width;
+                if (width < (totalWidth - margin * 2)) {
+                    currentLine += " " + word;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
+            }
+            lines.push(currentLine);
+
+            const titleHeight = lines.length * lineHeight;
+            const contentHeight = titleHeight + spacing + qrSize + spacing + footerFontSize;
+            
+            // Set dynamic height if content exceeds standard ratio
+            const minHeight = Math.floor(totalWidth * (80/90));
+            const totalHeight = Math.max(minHeight, contentHeight + 40); 
+
             tempCanvas.width = totalWidth; 
             tempCanvas.height = totalHeight;
+            
+            // Background
             tempCtx.fillStyle = '#ffffff'; 
             tempCtx.fillRect(0, 0, totalWidth, totalHeight);
-            const titleFontSize = 26; const footerFontSize = 10; const spacing = 15;
-            const contentHeight = titleFontSize + spacing + qrSize + spacing + footerFontSize;
+
             const startY = (totalHeight - contentHeight) / 2;
+
+            // Draw wrapped title
             tempCtx.fillStyle = '#000080'; 
             tempCtx.font = `bold ${titleFontSize}px Inter, sans-serif`; 
             tempCtx.textAlign = 'center'; 
             tempCtx.textBaseline = 'top';
-            const displayTitle = title.length > 22 ? title.substring(0, 19) + '...' : title;
-            tempCtx.fillText(displayTitle.toUpperCase(), totalWidth / 2, startY);
+            
+            lines.forEach((line, index) => {
+                tempCtx.fillText(line, totalWidth / 2, startY + (index * lineHeight));
+            });
+
+            // Draw QR
             const qrStartX = (totalWidth - qrSize) / 2;
-            tempCtx.drawImage(sourceCanvas, qrStartX, startY + titleFontSize + spacing);
+            const qrStartY = startY + titleHeight + spacing;
+            tempCtx.drawImage(sourceCanvas, qrStartX, qrStartY);
+
+            // Draw Footer
             tempCtx.fillStyle = '#94a3b8'; 
             tempCtx.font = `900 ${footerFontSize}px Inter, sans-serif`; 
             tempCtx.textAlign = 'center';
             tempCtx.textBaseline = 'top';
-            tempCtx.fillText('ELDOR SOP SYSTEM - ACCESS QR', totalWidth / 2, startY + titleFontSize + spacing + qrSize + spacing);
+            tempCtx.fillText('ELDOR SOP SYSTEM - ACCESS QR', totalWidth / 2, qrStartY + qrSize + spacing);
+            
             return tempCanvas;
         }
 
